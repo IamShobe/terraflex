@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 import uvicorn
 
 from tfstate_git.server.config import Settings
+from tfstate_git.server.base_state_lock_provider import LockBody
 from tfstate_git.server.repository import GitStateLockRepository, LockingError
 from tfstate_git.utils.dependency_downloader import DependenciesManager
 from tfstate_git.utils.downloaders.age import AgeDownloader
