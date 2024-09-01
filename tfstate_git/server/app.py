@@ -9,16 +9,35 @@ import uvicorn
 from tfstate_git.server.config import Settings
 from tfstate_git.server.repository import GitStateLockRepository, LockingError
 from tfstate_git.utils.dependency_downloader import DependenciesManager
+from tfstate_git.utils.downloaders.age import AgeDownloader
+from tfstate_git.utils.downloaders.base import DependencyDownloader
+from tfstate_git.utils.downloaders.sops import SopsDownloader
 
 
 config = Settings()
 
 state = {}
 
+
 async def initialize_manager():
-    manager = DependenciesManager(dest_folder=config.state_dir)
+    manager = DependenciesManager(
+        dependencies=[
+            DependencyDownloader(
+                names=["sops"],
+                version="3.9.0",
+                download_file_callback=SopsDownloader(),
+            ),
+            DependencyDownloader(
+                names=["age", "age-keygen"],
+                version="1.2.0",
+                download_file_callback=AgeDownloader(),
+            ),
+        ],
+        dest_folder=config.state_dir,
+    )
     await manager.initialize()
     return manager
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):

@@ -1,15 +1,22 @@
 from contextlib import suppress
 import json
-import os
 import pathlib
 import subprocess
 
-from tfstate_git.server.base_state_lock_provider import BaseStateLockProvider, LockBody, LockingError
+from tfstate_git.server.base_state_lock_provider import (
+    BaseStateLockProvider,
+    LockBody,
+    LockingError,
+)
 from tfstate_git.utils.dependency_downloader import DependenciesManager
 from tfstate_git.utils.sops_controller import Sops
 
 
 class GitStateLockRepository(BaseStateLockProvider):
+    """This follows the steps described in the suggestion here:
+    https://github.com/plumber-cd/terraform-backend-git
+    """
+
     def __init__(
         self,
         manager: DependenciesManager,
@@ -52,10 +59,9 @@ class GitStateLockRepository(BaseStateLockProvider):
         self._git("pull", "origin", self.ref)
 
         # read state
-        state_file = os.path.join(self.repo, self.state_file)
+        state_file = self.repo / self.state_file
         try:
-            with open(state_file, "r") as f:
-                data = f.read()
+            data = state_file.read_text()
 
         except FileNotFoundError:
             return None
@@ -73,12 +79,11 @@ class GitStateLockRepository(BaseStateLockProvider):
         self._git("pull", "origin", self.ref)
 
         # save state
-        state_file = os.path.join(self.repo, self.state_file)
-        data = await self.sops.encrypt(state_file, json.dumps(value))
-        with open(state_file, "w") as f:
-            f.write(data)
+        state_file = self.repo / self.state_file
+        data = await self.sops.encrypt(str(state_file), json.dumps(value))
+        state_file.write_text(data)
 
-        self._git("add", state_file)
+        self._git("add", str(state_file))
         self._git("commit", "-m", f"Update state - id {lock_id}")
         self._git("push", "origin", self.ref)
 
@@ -91,10 +96,10 @@ class GitStateLockRepository(BaseStateLockProvider):
         self._git("pull", "origin", self.ref)
 
         # delete state
-        state_file = os.path.join(self.repo, self.state_file)
-        os.remove(state_file)
+        state_file = self.repo / self.state_file
+        state_file.unlink()
 
-        self._git("add", state_file)
+        self._git("add", str(state_file))
         self._git("commit", "-m", f"Delete state - id {lock_id}")
         self._git("push", "origin", self.ref)
 
@@ -117,9 +122,8 @@ class GitStateLockRepository(BaseStateLockProvider):
             return None
 
         # read lock data
-        lock_file = os.path.join(self.repo, "locks", f"{self.state_file}.lock")
-        with open(lock_file, "r") as f:
-            data = f.read()
+        lock_file = self.repo / "locks" / f"{self.state_file}.lock"
+        data = lock_file.read_bytes()
 
         # decrypt data
         parsed = LockBody.model_validate_json(data)
@@ -145,14 +149,13 @@ class GitStateLockRepository(BaseStateLockProvider):
         self._git("checkout", "-b", f"locks/{self.state_file}")
 
         # make sure lock folder exists
-        locks_dir = os.path.join(self.repo, "locks")
-        os.makedirs(locks_dir, exist_ok=True)
+        locks_dir = self.repo / "locks"
+        locks_dir.mkdir(exist_ok=True)
         # write lock file
-        lock_file = os.path.join(locks_dir, f"{self.state_file}.lock")
-        with open(lock_file, "w") as f:
-            f.write(data.model_dump_json())
+        lock_file = locks_dir / f"{self.state_file}.lock"
+        lock_file.write_bytes(data.model_dump_json().encode())
 
-        self._git("add", lock_file)
+        self._git("add", str(lock_file))
         self._git("commit", "-m", f"Locking state - id {lock_id}")
         try:
             self._git("push", "origin", f"locks/{self.state_file}")
