@@ -52,12 +52,12 @@ class GitStateLockRepository(BaseStateLockRepository):
         state_file: str = "terraform.tfstate",
         sops_binary_path: pathlib.Path = "sops",
         key_path: pathlib.Path = "age_key.txt",
-        metadata_dir: pathlib.Path = ".tfstate_git",
+        sops_config_path: pathlib.Path = None,
     ):
         self.repo = repo
         self.ref = ref
         self.state_file = state_file
-        self.sops_config_file = self.repo / metadata_dir / "sops.yaml"
+        self.sops_config_file = sops_config_path or self.repo / '.sops.yaml'
         print(self.sops_config_file)
         self.sops = Sops(
             sops_binary_path,

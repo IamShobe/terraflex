@@ -25,3 +25,7 @@ class Settings(BaseSettings):
     )
 
     state_file: pathlib.Path = pathlib.Path("terraform.tfstate")
+
+    @property
+    def sops_config_path(self) -> pathlib.Path:
+        return self.repo_root_dir / self.metadata_dir / "sops.yaml"

@@ -1,7 +1,7 @@
 import asyncio
-import os
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Optional, TypeVar
 from pydantic import BaseModel, Field
 import typer
 import yaml
@@ -77,7 +77,10 @@ def upsert_age_key(age_public_key: str, sops_file: str):
 
 
 async def use_existing_private_key(
-    sops_file: Path, age_controller: AgeKeygenController, private_key_location: Path, force: bool
+    sops_file: Path,
+    age_controller: AgeKeygenController,
+    private_key_location: Path,
+    force: bool,
 ) -> Optional[str]:
     public_key = await age_controller.get_public_key(private_key_location)
     existing_public_key = get_existing_age_key(sops_file)
@@ -108,7 +111,7 @@ async def _init(force: bool):
         cwd=Path.cwd(),
     )
 
-    sops_file = config.repo_root_dir / config.metadata_dir / "sops.yaml" 
+    sops_file = config.sops_config_path
 
     private_key_location = config.age_key_path
     if not private_key_location.exists():
@@ -119,7 +122,21 @@ async def _init(force: bool):
         private_key_location.parent.mkdir(parents=True, exist_ok=True)
         await age_controller.generate_key(private_key_location)
 
-    return await use_existing_private_key(sops_file, age_controller, private_key_location, force)
+    return await use_existing_private_key(
+        sops_file, age_controller, private_key_location, force
+    )
+
+
+R = TypeVar("R")
+
+
+@contextmanager
+def capture_aborts():
+    try:
+        yield
+    except typer.Abort as e:
+        print("Error:", e)
+        raise
 
 
 @app.command()
@@ -128,12 +145,37 @@ def init(
         bool, typer.Option("-f", help="force replacement on existing key")
     ] = False,
 ):
-    try:
+    with capture_aborts():
         asyncio.run(_init(force))
-    
-    except typer.Abort as e:
-        print("Error:", e)
-        raise
+
+
+@app.command()
+def export(
+    output: Annotated[Path, typer.Argument(..., help="Output file for the key")],
+):
+    with capture_aborts():
+        if not config.age_key_path.exists():
+            raise typer.Abort("age key not found. Please initialize it first.")
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(config.age_key_path.read_bytes())
+
+
+@app.command(name="import")
+def import_key(
+    input: Annotated[Path, typer.Argument(..., help="Input file for the key")],
+    force: Annotated[
+        bool, typer.Option("-f", help="force replacement on existing key")
+    ] = False,
+):
+    with capture_aborts():
+        if not input.exists():
+            raise typer.Abort("Input file not found")
+
+        config.age_key_path.parent.mkdir(parents=True, exist_ok=True)
+        config.age_key_path.write_bytes(input.read_bytes())
+
+        asyncio.run(_init(force))
 
 
 @app.command()
