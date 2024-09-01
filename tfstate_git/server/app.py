@@ -71,17 +71,6 @@ async def validation_exception_handler(request: Request, exc: LockingError):
     )
 
 
-class LockBody(BaseModel):
-    ID: str
-    Operation: str
-    Who: str
-    Version: str
-    Created: str
-
-
-LOCK_STATUS: LockBody | None = None
-
-
 @app.get("/state")
 async def get_state(controller: ControllerDependency):
     # read the state file
