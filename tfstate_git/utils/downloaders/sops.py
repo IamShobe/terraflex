@@ -10,9 +10,18 @@ class SopsDownloader:
     async def __call__(
         self, version: str, expected_paths: dict[str, pathlib.Path]
     ) -> dict[str, pathlib.Path]:
+        arch = platform.machine().lower()
+        if arch == "x86_64":
+            arch = "amd64"
+    
+        elif arch == "aarch64":
+            arch = "arm64"
+
+
         bin_name = (
-            f"sops-v{version}.{platform.system().lower()}.{platform.machine().lower()}"
+            f"sops-v{version}.{platform.system().lower()}.{arch}"
         )
+        print(bin_name)
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"https://github.com/getsops/sops/releases/download/v{version}/{bin_name}",

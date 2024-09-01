@@ -2,6 +2,28 @@ from pathlib import Path
 from tfstate_git.utils.binary_controller import BinaryController
 
 
+class AgeController(BinaryController):
+    async def encrypt(self, filename: str, content: str):
+        return await self._execute_command(
+            [
+                *self._get_common_args(filename),
+                "--encrypt",
+                "/dev/stdin",
+            ],
+            input=content.encode(),
+        )
+
+    async def decrypt(self, filename: str, content: str):
+        return await self._execute_command(
+            [
+                *self._get_common_args(filename),
+                "--decrypt",
+                "/dev/stdin",
+            ],
+            input=content.encode(),
+        )
+
+
 class AgeKeygenController(BinaryController):
     async def generate_key(self, key_location: Path):
         await self._execute_command(["-o", str(key_location)])

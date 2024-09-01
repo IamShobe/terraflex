@@ -7,19 +7,22 @@ import httpx
 
 from tfstate_git.utils.downloaders.base import mv_executable_to_dest
 
-AGE_URL_DOWNLOAD = "https://dl.filippo.io/age/v{version}?for={platform}"
+AGE_URL_DOWNLOAD = "https://github.com/FiloSottile/age/releases/download/v{version}/age-v{version}-{platform}.tar.gz"
 
 
 class AgeDownloader:
     async def __call__(
         self, version: str, expected_paths: dict[str, pathlib.Path]
     ) -> dict[str, pathlib.Path]:
+        url = AGE_URL_DOWNLOAD.format(
+                    version=version,
+                    # TODO
+                    platform=f"{platform.system().lower()}-amd64",
+                )
+        print("downloading age from", url)
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                AGE_URL_DOWNLOAD.format(
-                    version=version,
-                    platform=f"{platform.system().lower()}/{platform.machine().lower()}",
-                ),
+                url,
                 follow_redirects=True,
             )
 

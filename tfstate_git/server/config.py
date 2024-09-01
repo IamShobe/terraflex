@@ -24,7 +24,7 @@ class Settings(BaseSettings):
         default=xdg_base_dirs.xdg_config_home() / PACKAGE_NAME / "age_key.txt",
     )
 
-    state_file: pathlib.Path = pathlib.Path("terraform.tfstate")
+    state_file: pathlib.Path = pathlib.Path("terraform2.tfstate")
 
     @property
     def sops_config_path(self) -> pathlib.Path:

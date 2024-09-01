@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
@@ -45,8 +46,7 @@ async def initialize_manager():
     return manager
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan():
     manager = await initialize_manager()
 
     storage_driver = GitStorageProvider(
@@ -66,7 +66,10 @@ async def lifespan(_: FastAPI):
         # terraform config
         state_file=config.state_file,
     )
-    yield
+
+print("Starting server")
+asyncio.run(lifespan())
+print("Server started")
 
 
 def get_controller() -> EncryptedStateLockProvider:
@@ -76,7 +79,7 @@ def get_controller() -> EncryptedStateLockProvider:
 ControllerDependency = Annotated[EncryptedStateLockProvider, Depends(get_controller)]
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 @app.exception_handler(LockingError)
