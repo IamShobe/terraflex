@@ -8,7 +8,7 @@ import uvicorn
 
 from tfstate_git.server.config import Settings
 from tfstate_git.server.repository import GitStateLockRepository, LockingError
-from tfstate_git.utils.sops_installer import bootstrap
+from tfstate_git.utils.dependency_downloader import DependenciesManager
 
 
 config = Settings()
@@ -18,14 +18,14 @@ state = {}
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    sops_path = await bootstrap(
-        config.state_dir,
-    )
+    manager = DependenciesManager(dest_folder=config.state_dir)
+    await manager.initialize()
+
     state["controller"] = GitStateLockRepository(
         repo=config.repo_root_dir,
         ref="main",
         state_file=config.state_file,
-        sops_binary_path=sops_path,
+        sops_binary_path=manager.get_dependency_location("sops"),
     )
     yield
 
@@ -94,7 +94,7 @@ def unlock_state(controller: ControllerDependency):
 
 
 def start_server(port: int):
-    uvicorn.run(app, port)
+    uvicorn.run(app, port=port)
 
 
 if __name__ == "__main__":
