@@ -1,5 +1,6 @@
 import abc
 from contextlib import contextmanager
+from dataclasses import dataclass
 import json
 import pathlib
 
@@ -43,29 +44,50 @@ class StorageProvider(abc.ABC):
     def release_lock(self, file_name: str): ...
 
 
+@dataclass
+class EncryptionConfig:
+    key_path: pathlib.Path = None
+    sops_config_path: pathlib.Path = None
+
+
 class EncryptedStateLockProvider(BaseStateLockProvider):
     def __init__(
         self,
         manager: DependenciesManager,
         storage_driver: StorageProvider,
+        encryption_config: EncryptionConfig,
         state_file: str = "terraform.tfstate",
-        key_path: pathlib.Path = "age_key.txt",
-        sops_config_path: pathlib.Path = None,
     ):
         self.state_file = state_file
         self.storage_driver = storage_driver
-        try:
-            config = self.storage_driver.get_file(sops_config_path)
+        self.sops = self._get_sops_controller(manager, encryption_config)
 
-        except FileNotFoundError as e:
-            raise FileNotFoundError("Sops config file not found cannot continue") from e
+    def _get_sops_controller(
+        self, manager: DependenciesManager, encryption_config: EncryptionConfig | None
+    ):
+        if encryption_config is None:
+            encryption_config = EncryptionConfig()
 
-        self.sops = Sops(
+        config = None
+        if encryption_config.sops_config_path is not None:
+            try:
+                config = self.storage_driver.get_file(
+                    encryption_config.sops_config_path
+                )
+
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    "Sops config file not found cannot continue"
+                ) from e
+
+        env = {}
+        if encryption_config.key_path is not None:
+            env["SOPS_AGE_KEY_FILE"] = str(encryption_config.key_path)
+
+        return Sops(
             manager.get_dependency_location("sops"),
             config=config,
-            env={
-                "SOPS_AGE_KEY_FILE": str(key_path),
-            },
+            env=env,
         )
 
     async def get(self):
@@ -91,7 +113,7 @@ class EncryptedStateLockProvider(BaseStateLockProvider):
         self.storage_driver.delete_file(self.state_file)
 
     async def _check_lock(self, lock_id: str):
-        data = self.storage_driver.read_lock()
+        data = self.storage_driver.read_lock(self.state_file)
         if data is None:
             return None
 

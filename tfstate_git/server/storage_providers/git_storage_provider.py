@@ -1,14 +1,15 @@
-
-    
 from contextlib import suppress
 import pathlib
 import subprocess
 
 from tfstate_git.server.base_state_lock_provider import LockBody
-from tfstate_git.server.encrypted_storage_state_lock_provider import assume_lock_conflict_on_error
+from tfstate_git.server.encrypted_storage_state_lock_provider import (
+    StorageProvider,
+    assume_lock_conflict_on_error,
+)
 
 
-class GitStorageProvider:
+class GitStorageProvider(StorageProvider):
     """This follows the steps described in the suggestion here:
     https://github.com/plumber-cd/terraform-backend-git
     """
@@ -116,4 +117,3 @@ class GitStorageProvider:
 
     def release_lock(self, file_name: str):
         self._git("push", "origin", "--delete", f"locks/{file_name}")
-

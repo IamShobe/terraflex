@@ -9,9 +9,11 @@ from tfstate_git.server.config import Settings
 from tfstate_git.server.base_state_lock_provider import LockBody
 from tfstate_git.server.encrypted_storage_state_lock_provider import (
     EncryptedStateLockProvider,
+    EncryptionConfig,
     LockingError,
 )
 from tfstate_git.server.storage_providers.git_storage_provider import GitStorageProvider
+from tfstate_git.server.storage_providers.local_storage_provider import LocalStorageProvider
 from tfstate_git.utils.dependency_downloader import DependenciesManager
 from tfstate_git.utils.downloaders.age import AgeDownloader
 from tfstate_git.utils.downloaders.base import DependencyDownloader
@@ -52,12 +54,17 @@ async def lifespan(_: FastAPI):
         ref="main",
     )
 
+    # storage_driver = LocalStorageProvider("/tmp/some_speed")
+
     state["controller"] = EncryptedStateLockProvider(
         manager=manager,
         storage_driver=storage_driver,
+        encryption_config=EncryptionConfig(
+            sops_config_path=config.sops_config_path,
+            key_path=config.age_key_path,
+        ),
+        # terraform config
         state_file=config.state_file,
-        key_path=config.age_key_path,
-        sops_config_path=config.sops_config_path,
     )
     yield
 
