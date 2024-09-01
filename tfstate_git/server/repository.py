@@ -6,6 +6,7 @@ import pathlib
 import subprocess
 from pydantic import BaseModel
 
+from tfstate_git.utils.dependency_downloader import DependenciesManager
 from tfstate_git.utils.sops_controller import Sops
 
 
@@ -47,20 +48,19 @@ class BaseStateLockRepository(abc.ABC):
 class GitStateLockRepository(BaseStateLockRepository):
     def __init__(
         self,
+        manager: DependenciesManager,
         repo: pathlib.Path,
         ref: str = "main",
         state_file: str = "terraform.tfstate",
-        sops_binary_path: pathlib.Path = "sops",
         key_path: pathlib.Path = "age_key.txt",
         sops_config_path: pathlib.Path = None,
     ):
         self.repo = repo
         self.ref = ref
         self.state_file = state_file
-        self.sops_config_file = sops_config_path or self.repo / '.sops.yaml'
-        print(self.sops_config_file)
+        self.sops_config_file = sops_config_path or self.repo / ".sops.yaml"
         self.sops = Sops(
-            sops_binary_path,
+            manager.get_dependency_location("sops"),
             self.repo,
             config=self.sops_config_file,
             env={

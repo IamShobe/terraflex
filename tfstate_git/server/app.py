@@ -27,7 +27,7 @@ async def lifespan(_: FastAPI):
         repo=config.repo_root_dir,
         ref="main",
         state_file=config.state_file,
-        sops_binary_path=manager.get_dependency_location("sops"),
+        manager=manager,
         key_path=config.age_key_path,
         sops_config_path=config.sops_config_path,
     )
