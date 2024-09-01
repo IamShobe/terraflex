@@ -3,7 +3,9 @@ import pathlib
 
 
 class BinaryController:
-    def __init__(self, binary_location: pathlib.Path, cwd: pathlib.Path, env=None):
+    def __init__(
+        self, binary_location: pathlib.Path, cwd: pathlib.Path = None, env=None
+    ):
         self.binary_location = binary_location
         self.cwd = cwd
         self.env = env or {}

@@ -28,4 +28,4 @@ class Settings(BaseSettings):
 
     @property
     def sops_config_path(self) -> pathlib.Path:
-        return self.repo_root_dir / self.metadata_dir / "sops.yaml"
+        return self.metadata_dir / "sops.yaml"

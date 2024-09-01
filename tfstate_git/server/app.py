@@ -7,7 +7,11 @@ import uvicorn
 
 from tfstate_git.server.config import Settings
 from tfstate_git.server.base_state_lock_provider import LockBody
-from tfstate_git.server.repository import GitStateLockRepository, LockingError
+from tfstate_git.server.encrypted_storage_state_lock_provider import (
+    EncryptedStateLockProvider,
+    LockingError,
+)
+from tfstate_git.server.storage_providers.git_storage_provider import GitStorageProvider
 from tfstate_git.utils.dependency_downloader import DependenciesManager
 from tfstate_git.utils.downloaders.age import AgeDownloader
 from tfstate_git.utils.downloaders.base import DependencyDownloader
@@ -42,22 +46,27 @@ async def initialize_manager():
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     manager = await initialize_manager()
-    state["controller"] = GitStateLockRepository(
+
+    storage_driver = GitStorageProvider(
         repo=config.repo_root_dir,
         ref="main",
-        state_file=config.state_file,
+    )
+
+    state["controller"] = EncryptedStateLockProvider(
         manager=manager,
+        storage_driver=storage_driver,
+        state_file=config.state_file,
         key_path=config.age_key_path,
         sops_config_path=config.sops_config_path,
     )
     yield
 
 
-def get_controller() -> GitStateLockRepository:
+def get_controller() -> EncryptedStateLockProvider:
     return state["controller"]
 
 
-ControllerDependency = Annotated[GitStateLockRepository, Depends(get_controller)]
+ControllerDependency = Annotated[EncryptedStateLockProvider, Depends(get_controller)]
 
 
 app = FastAPI(lifespan=lifespan)
@@ -97,7 +106,7 @@ async def delete_state(controller: ControllerDependency):
 
 @app.put("/lock")
 def lock_state(body: LockBody, controller: ControllerDependency):
-    return controller.lock(body.ID, body)
+    return controller.lock(body)
 
 
 @app.delete("/lock")
