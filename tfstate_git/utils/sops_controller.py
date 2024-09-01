@@ -1,30 +1,52 @@
-import asyncio
 import pathlib
+from typing import Mapping
+
+from tfstate_git.utils.binary_controller import BinaryController
 
 
-class Sops:
-    def __init__(self, binary_location: pathlib.Path, cwd: pathlib.Path):
-        self.binary_location = binary_location
-        self.cwd = cwd
+class Sops(BinaryController):
+    def __init__(
+        self,
+        binary_location: pathlib.Path,
+        cwd: pathlib.Path,
+        env: Mapping[str, str] = None,
+        config: pathlib.Path = None,
+    ):
+        super().__init__(binary_location, cwd, env)
+        self.config = config
 
-    async def _execute_command(self, args, input=None):
-        proc = await asyncio.create_subprocess_exec(
-            self.binary_location,
-            *args,
-            cwd=self.cwd,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+    def _get_common_args(self, filename: str):
+        args = []
+        if self.config is not None:
+            args.extend(["--config", str(self.config)])
+        
+        args.extend([
+            "--filename-override",
+            filename,
+            "--input-type",
+            "binary",
+            "--output-type",
+            "binary",
+        ])
+
+        return args
+
+    async def encrypt(self, filename: str, content: str):
+        return await self._execute_command(
+            [
+                *self._get_common_args(filename),
+                "--encrypt",
+                "/dev/stdin",
+            ],
+            input=content.encode(),
         )
 
-        stdout, stderr = await proc.communicate(input)
-        if proc.returncode != 0:
-            raise Exception(f"Failed to execute sops: {stderr.decode()}")
-
-        return stdout.decode()
-
-    async def encrypt(self, content: str):
-        return await self._execute_command(["encrypt", "/dev/stdin"], input=content.encode())
-
-    async def decrypt(self, content: str):
-        return await self._execute_command(["decrypt", "/dev/stdin"], input=content.encode())
+    async def decrypt(self, filename: str, content: str):
+        return await self._execute_command(
+            [
+                *self._get_common_args(filename),
+                "--decrypt",
+                "/dev/stdin",
+            ],
+            input=content.encode(),
+        )

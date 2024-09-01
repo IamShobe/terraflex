@@ -14,6 +14,14 @@ class Settings(BaseSettings):
         default=xdg_base_dirs.xdg_data_home() / PACKAGE_NAME,
     )
 
-    repo_root_dir: pathlib.Path
+    repo_root_dir: pathlib.Path = Field(
+        default=pathlib.Path.cwd(),
+    )
+
+    metadata_dir: pathlib.Path = Field(default=".tfstate_git")
+
+    age_key_path: pathlib.Path = Field(
+        default=xdg_base_dirs.xdg_config_home() / PACKAGE_NAME / "age_key.txt",
+    )
 
     state_file: pathlib.Path = pathlib.Path("terraform.tfstate")

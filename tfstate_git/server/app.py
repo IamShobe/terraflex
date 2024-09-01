@@ -15,17 +15,20 @@ config = Settings()
 
 state = {}
 
+async def initialize_manager():
+    manager = DependenciesManager(dest_folder=config.state_dir)
+    await manager.initialize()
+    return manager
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    manager = DependenciesManager(dest_folder=config.state_dir)
-    await manager.initialize()
-
+    manager = await initialize_manager()
     state["controller"] = GitStateLockRepository(
         repo=config.repo_root_dir,
         ref="main",
         state_file=config.state_file,
         sops_binary_path=manager.get_dependency_location("sops"),
+        key_path=config.age_key_path,
     )
     yield
 

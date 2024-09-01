@@ -51,11 +51,22 @@ class GitStateLockRepository(BaseStateLockRepository):
         ref: str = "main",
         state_file: str = "terraform.tfstate",
         sops_binary_path: pathlib.Path = "sops",
+        key_path: pathlib.Path = "age_key.txt",
+        metadata_dir: pathlib.Path = ".tfstate_git",
     ):
         self.repo = repo
         self.ref = ref
         self.state_file = state_file
-        self.sops = Sops(sops_binary_path, self.repo)
+        self.sops_config_file = self.repo / metadata_dir / "sops.yaml"
+        print(self.sops_config_file)
+        self.sops = Sops(
+            sops_binary_path,
+            self.repo,
+            config=self.sops_config_file,
+            env={
+                "SOPS_AGE_KEY_FILE": str(key_path),
+            },
+        )
 
     def _git(self, command: str, *args):
         proc = subprocess.run(
@@ -86,7 +97,7 @@ class GitStateLockRepository(BaseStateLockRepository):
             return None
 
         # decrypt data
-        content = await self.sops.decrypt(data)
+        content = await self.sops.decrypt(state_file, data)
         return json.loads(content)
 
     async def put(self, lock_id: str, value: dict):
@@ -99,7 +110,7 @@ class GitStateLockRepository(BaseStateLockRepository):
 
         # save state
         state_file = os.path.join(self.repo, self.state_file)
-        data = await self.sops.encrypt(json.dumps(value))
+        data = await self.sops.encrypt(state_file, json.dumps(value))
         with open(state_file, "w") as f:
             f.write(data)
 

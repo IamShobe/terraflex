@@ -15,6 +15,7 @@ xdg-base-dirs = "^6.0.1"
 
 
 typer = "^0.12.5"
+pyyaml = "^6.0.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
