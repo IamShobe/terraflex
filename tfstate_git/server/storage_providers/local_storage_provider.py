@@ -1,26 +1,28 @@
 import pathlib
 
 from tfstate_git.server.base_state_lock_provider import LockBody
-from tfstate_git.server.storage_providers.base_storage_provider import StorageProvider
+from tfstate_git.server.storage_providers.storage_provider_protocol import (
+    StorageProviderProtocol,
+)
 
 
-class LocalStorageProvider(StorageProvider):
+class LocalStorageProvider(StorageProviderProtocol):
     def __init__(self, folder: pathlib.Path) -> None:
         self.folder = pathlib.Path(folder)
 
-    def get_file(self, file_name: str) -> str | None:
+    def get_file(self, file_name: str) -> bytes | None:
         # read state
         state_file = self.folder / file_name
         try:
-            return state_file.read_text()
+            return state_file.read_bytes()
 
         except FileNotFoundError:
             return None
 
-    def put_file(self, file_name: str, data: str) -> None:
+    def put_file(self, file_name: str, data: bytes) -> None:
         # save state
         state_file = self.folder / file_name
-        state_file.write_text(data)
+        state_file.write_bytes(data)
 
     def delete_file(self, file_name: str) -> None:
         # delete state

@@ -8,7 +8,6 @@ from typing import (
     Self,
     Type,
     Union,
-    get_args,
 )
 
 from pydantic import BaseModel, Field, model_validator
@@ -28,6 +27,7 @@ class StorageProviderType(StrEnum):
 class GitStorageProviderConfig(BaseModel):
     type: Literal[StorageProviderType.GIT]
     origin_url: str
+    ref: str = Field(default="main")
     clone_dir: pathlib.Path = Field(default=pathlib.Path.cwd())
 
 
@@ -41,14 +41,14 @@ class LocalStorageProviderUsageParams(BaseModel):
 
 
 class StorageProviderUsageConfig(BaseModel):
-    storage_provider: str
-    storage_params: Optional[Any]
+    provider: str
+    params: Optional[Any]
 
 
 class EncryptionTransformerConfig(BaseModel):
     type: Literal["encryption"]
     key_type: Literal["age"]  # add more key types here as union
-    import_from: StorageProviderUsageConfig
+    import_from_storage: StorageProviderUsageConfig
 
 
 StorageProviderConfig = Annotated[
@@ -75,19 +75,6 @@ STORAGE_PROVIDER_TYPE_TO_PARAMS: dict[
 }
 
 
-# TODO: move this to a test...
-annotated_types = get_args(StorageProviderConfig)
-union_types = get_args(annotated_types[0])  # first element is the Union type
-
-registered_config_types = [c.__annotations__["type"] for c in union_types]
-
-# assert all storage providers have a corresponding class in STORAGE_PROVIDER_TYPE_TO_PARAMS
-assert all(
-    config_type in STORAGE_PROVIDER_TYPE_TO_PARAMS
-    for config_type in registered_config_types
-)
-
-
 class ConfigFile(BaseModel):
     version: str
     storage_providers: dict[str, StorageProviderConfig]
@@ -99,32 +86,32 @@ class ConfigFile(BaseModel):
         for transformer in self.transformers:
             if transformer.type == "encryption":
                 if (
-                    transformer.import_from.storage_provider
+                    transformer.import_from_storage.provider
                     not in self.storage_providers
                 ):
                     raise ValueError(
-                        f"Storage provider '{transformer.import_from.storage_provider}' not declared in storage_providers"
+                        f"Storage provider '{transformer.import_from_storage.provider}' not declared in storage_providers"
                     )
 
                 storage_provider_type = self.storage_providers[
-                    transformer.import_from.storage_provider
+                    transformer.import_from_storage.provider
                 ].type
                 if storage_provider_type not in STORAGE_PROVIDER_TYPE_TO_PARAMS:
                     raise ValueError(
-                        f"Storage provider '{transformer.import_from.storage_provider}' does not support encryption"
+                        f"Storage provider '{transformer.import_from_storage.provider}' does not support encryption"
                     )
 
                 storage_class = STORAGE_PROVIDER_TYPE_TO_PARAMS[storage_provider_type]
                 if storage_class is not None:
-                    if transformer.import_from.storage_params is None:
+                    if transformer.import_from_storage.params is None:
                         raise ValueError(
-                            f"Storage provider '{transformer.import_from.storage_provider}' requires storage_params"
+                            f"Storage provider '{transformer.import_from_storage.provider}' requires storage_params"
                         )
 
                     local_params = storage_class.model_validate(
-                        transformer.import_from.storage_params
+                        transformer.import_from_storage.params
                     )
-                    transformer.import_from.storage_params = local_params
+                    transformer.import_from_storage.params = local_params
 
         return self
 

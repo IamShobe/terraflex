@@ -7,7 +7,7 @@ import typer
 import yaml
 
 from tfstate_git.server.app import initialize_manager, start_server
-from tfstate_git.utils.age_controller import AgeKeygenController
+from tfstate_git.server.adapters.age_controller import AgeKeygenController
 from tfstate_git.server.app import config
 
 TFSTATE_REGEX = r"\.tfstate$"
@@ -97,11 +97,11 @@ async def use_existing_private_key(
 
 async def _init(force: bool) -> str | None:
     manager = await initialize_manager()
-    if manager.get_dependency_location("age-keygen") is None:
+    if manager.require_dependency("age-keygen") is None:
         raise typer.Abort("age-keygen not found. Please install it first.")
 
     age_controller = AgeKeygenController(
-        binary_location=manager.get_dependency_location("age-keygen"),
+        binary_location=manager.require_dependency("age-keygen"),
         cwd=Path.cwd(),
     )
 

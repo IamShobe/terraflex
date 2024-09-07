@@ -20,15 +20,19 @@ requests = "^2.32.3"
 ruff = "^0.6.3"
 ipykernel = "^6.29.5"
 pytest = "^8.3.2"
-pytest-playwright = "^0.5.2"
 
 types-pyyaml = "^6.0.12.20240808"
+ipdb = "^0.13.13"
+anyio = "^4.4.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 tfstate-git = "tfstate_git.cli.cli:main"
+
+[tool.ruff]
+line-length = 120
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]

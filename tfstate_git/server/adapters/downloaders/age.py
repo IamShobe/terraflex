@@ -6,19 +6,29 @@ from typing import override
 
 import httpx
 
-from tfstate_git.utils.downloaders.base import BaseDownloader, mv_executable_to_dest
+from tfstate_git.utils.dependency_downloader import DownloaderProtocol, mv_executable_to_dest
 
 # pylint: disable=line-too-long
 AGE_URL_DOWNLOAD = "https://github.com/FiloSottile/age/releases/download/v{version}/age-v{version}-{platform}.tar.gz"
 
 
-class AgeDownloader(BaseDownloader):
+class AgeDownloader(DownloaderProtocol):
+    def _get_platform_name(self):
+        current_platform = platform.system().lower()
+        machine_type = platform.machine()
+        # check if amd64 or x86_64
+        if machine_type in ["AMD64", "x86_64"]:
+            return f"{current_platform}-amd64"
+
+        return f"{current_platform}-arm64"
+
     @override
-    async def __call__(self, version: str, expected_paths: dict[str, pathlib.Path]) -> None:
+    async def __call__(
+            self, version: str, expected_paths: dict[str, pathlib.Path]
+    ) -> None:
         url = AGE_URL_DOWNLOAD.format(
             version=version,
-            # TODO: implement better support
-            platform=f"{platform.system().lower()}-amd64",
+            platform=self._get_platform_name(),
         )
         print("downloading age from", url)
         async with httpx.AsyncClient() as client:

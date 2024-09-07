@@ -1,32 +1,41 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated, Any, AsyncIterator
 from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 import uvicorn
+import yaml
 
-from tfstate_git.server.config import Settings
+from tfstate_git.server.adapters.age_controller import AgeController
+from tfstate_git.server.config import ConfigFile, EncryptionTransformerConfig, Settings, StorageProviderConfig
 from tfstate_git.server.base_state_lock_provider import (
-    BaseStateLockProvider,
+    StateLockProviderProtocol,
     Data,
     LockBody,
     LockingError,
 )
+from tfstate_git.server.storage_providers.local_storage_provider import LocalStorageProvider
+from tfstate_git.server.storage_providers.storage_provider_protocol import StorageProviderProtocol
 from tfstate_git.server.tf_state_lock_controller import (
     TFStateLockController,
 )
 from tfstate_git.server.storage_providers.git_storage_provider import GitStorageProvider
 from tfstate_git.server.transformation_providers.encryption_transformation_provider import (
-    EncryptionConfig,
-    EncryptionTransformationProvider,
+    EncryptionTransformation,
 )
-from tfstate_git.utils.dependency_downloader import DependenciesManager
-from tfstate_git.utils.downloaders.age import AgeDownloader
-from tfstate_git.utils.downloaders.base import DependencyDownloader
-from tfstate_git.utils.downloaders.sops import SopsDownloader
-
+from tfstate_git.server.adapters.downloaders.age import AgeDownloader
+from tfstate_git.server.transformation_providers.transformation_protocol import TransformationProtocol
+from tfstate_git.utils.dependency_downloader import DependencyDownloader
+from tfstate_git.utils.dependency_manager import DependenciesManager
 
 config = Settings()  # type: ignore
+
+config_file_location = Path.cwd() / "examples" / "tfformer.yaml"
+if config_file_location.exists():
+    content = config_file_location.read_bytes()
+    obj = yaml.safe_load(content)
+    file_config = ConfigFile.model_validate(obj)
 
 state = {}
 
@@ -35,20 +44,57 @@ async def initialize_manager() -> DependenciesManager:
     manager = DependenciesManager(
         dependencies=[
             DependencyDownloader(
-                names=["sops"],
-                version="3.9.0",
-                download_file_callback=SopsDownloader(),
-            ),
-            DependencyDownloader(
                 names=["age", "age-keygen"],
                 version="1.2.0",
-                download_file_callback=AgeDownloader(),
+                downloader=AgeDownloader(),
             ),
         ],
         dest_folder=config.state_dir,
     )
     await manager.initialize()
     return manager
+
+
+def create_storage_provider(storage_config: StorageProviderConfig) -> StorageProviderProtocol:
+    match storage_config.type:
+        case "local":
+            return LocalStorageProvider(storage_config.base_dir)
+
+        case "git":
+            return GitStorageProvider(
+                repo=storage_config.origin_url,
+                ref=storage_config.ref,
+            )
+
+        case _:
+            raise ValueError(f"Unsupported storage provider type: {storage_config.type}")
+
+
+def generate_encryption_transformer(transformer_config: EncryptionTransformerConfig, config: ConfigFile) -> EncryptionTransformation:
+    match transformer_config.key_type:
+        case "age":
+            # it's safe to get the key because we are past the validation
+            key_storage = config.storage_providers[transformer_config.import_from_storage.provider]
+            storage_provider = create_storage_provider(key_storage)
+            private_key = storage_provider.get_file(transformer_config.import_from_storage.params.path)
+            
+            
+
+        case _:
+            raise ValueError(f"Unsupported encryption key type: {transformer_config.key_type}")
+
+
+def generate_transformers(config: ConfigFile) -> list[TransformationProtocol]:
+    transformers = []
+    for transformer in config.transformers:
+        match transformer.type:
+            case "encryption":
+                transformers.append(generate_encryption_transformer(transformer, config))
+
+            case _:
+                raise ValueError(f"Unknown transformer type: {transformer.type}")
+
+    return transformers
 
 
 @asynccontextmanager
@@ -62,17 +108,16 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
     # storage_driver = LocalStorageProvider("/tmp/some_speed")
 
+    age_controller = AgeController(
+        binary_location=manager.require_dependency("age"),
+    )
+
     state["controller"] = TFStateLockController(
         storage_driver=git_storage_driver,
         data_transformers=[
-            EncryptionTransformationProvider(
-                storage_driver=git_storage_driver,
-                manager=manager,
-                encryption_config=EncryptionConfig(
-                    sops_config_path=config.sops_config_path,
-                    key_path=config.age_key_path,
-                ),
-            )
+            EncryptionTransformation(
+                encryption_provider=age_controller,
+            ),
         ],
         # terraform config
         state_file=config.state_file,
@@ -80,12 +125,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-def get_controller() -> BaseStateLockProvider:
+def get_controller() -> StateLockProviderProtocol:
     return state["controller"]
 
 
-ControllerDependency = Annotated[BaseStateLockProvider, Depends(get_controller)]
-
+ControllerDependency = Annotated[StateLockProviderProtocol, Depends(get_controller)]
 
 app = FastAPI(lifespan=lifespan)
 
@@ -110,11 +154,11 @@ async def get_state(controller: ControllerDependency) -> Data:
 
 @app.post("/state")
 async def update_state(
-    lock_id: Annotated[
-        str, Query(..., alias="ID", description="ID of the state to update")
-    ],
-    new_state: Annotated[Any, Body(..., description="New state")],
-    controller: ControllerDependency,
+        lock_id: Annotated[
+            str, Query(..., alias="ID", description="ID of the state to update")
+        ],
+        new_state: Annotated[Any, Body(..., description="New state")],
+        controller: ControllerDependency,
 ) -> None:
     return await controller.put(lock_id, new_state)
 

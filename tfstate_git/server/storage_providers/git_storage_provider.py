@@ -6,10 +6,12 @@ from tfstate_git.server.base_state_lock_provider import LockBody
 from tfstate_git.server.tf_state_lock_controller import (
     assume_lock_conflict_on_error,
 )
-from tfstate_git.server.storage_providers.base_storage_provider import StorageProvider
+from tfstate_git.server.storage_providers.storage_provider_protocol import (
+    StorageProviderProtocol,
+)
 
 
-class GitStorageProvider(StorageProvider):
+class GitStorageProvider(StorageProviderProtocol):
     """This follows the steps described in the suggestion here:
     https://github.com/plumber-cd/terraform-backend-git
     """
@@ -36,7 +38,7 @@ class GitStorageProvider(StorageProvider):
         self._git("reset", "--hard")
         self._git("checkout", self.ref)
 
-    def get_file(self, file_name: str) -> str | None:
+    def get_file(self, file_name: str) -> bytes | None:
         self._cleanup_workspace()
         # pull latest changes
         self._git("pull", "origin", self.ref)
@@ -44,19 +46,19 @@ class GitStorageProvider(StorageProvider):
         # read state
         state_file = self.repo / file_name
         try:
-            return state_file.read_text()
+            return state_file.read_bytes()
 
         except FileNotFoundError:
             return None
 
-    def put_file(self, file_name: str, data: str) -> None:
+    def put_file(self, file_name: str, data: bytes) -> None:
         self._cleanup_workspace()
         # pull latest changes
         self._git("pull", "origin", self.ref)
 
         # save state
         state_file = self.repo / file_name
-        state_file.write_text(data)
+        state_file.write_bytes(data)
 
         self._git("add", str(state_file))
         self._git("commit", "-m", f"Update state - {file_name}")

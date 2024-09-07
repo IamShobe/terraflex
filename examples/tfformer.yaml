@@ -10,14 +10,14 @@ storage_providers:
   
   local:
     type: local
-    base_dir: /path/to/secrets/
+    base_dir: ~/secrets/
 
 transformers:
   - type: encryption
     key_type: age
-    import_from:
-      storage_provider: local
-      storage_params:
+    import_from_storage:
+      provider: local
+      params:
         path: secrets/age_key.txt
 
   # - type: encryption

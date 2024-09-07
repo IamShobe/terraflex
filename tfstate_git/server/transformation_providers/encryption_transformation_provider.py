@@ -1,13 +1,10 @@
 from dataclasses import dataclass
 import pathlib
-from typing import Optional, override
+from typing import Optional, Protocol
 
-from tfstate_git.server.storage_providers.base_storage_provider import StorageProvider
-from tfstate_git.server.transformation_providers.base_transformation_provider import (
-    TransformationProvider,
+from tfstate_git.server.transformation_providers.transformation_protocol import (
+    TransformationProtocol,
 )
-from tfstate_git.utils.dependency_downloader import DependenciesManager
-from tfstate_git.utils.sops_controller import Sops
 
 
 @dataclass
@@ -16,46 +13,62 @@ class EncryptionConfig:
     sops_config_path: Optional[pathlib.Path] = None
 
 
-class EncryptionTransformationProvider(TransformationProvider):
-    def __init__(
-        self,
-        manager: DependenciesManager,
-        encryption_config: EncryptionConfig,
-        storage_driver: StorageProvider,
-    ):
-        self.storage_driver = storage_driver
+class EncryptionProtocol(Protocol):
+    async def encrypt(self, file_name: str, content: bytes) -> bytes: ...
+    async def decrypt(self, file_name: str, content: bytes) -> bytes: ...
 
-        self.sops = self._get_sops_controller(manager, encryption_config)
 
-    def _get_sops_controller(
-        self, manager: DependenciesManager, encryption_config: EncryptionConfig | None
-    ) -> Sops:
-        if encryption_config is None:
-            encryption_config = EncryptionConfig()
+class EncryptionTransformation(TransformationProtocol):
+    def __init__(self, encryption_provider: EncryptionProtocol):
+        self.encryption_provider = encryption_provider
 
-        config: str
-        if encryption_config.sops_config_path is not None:
-            path = encryption_config.sops_config_path
-            try:
-                config = self.storage_driver.get_file(str(path))
+    async def transform_read_file_content(self, filename: str, content: bytes) -> bytes:
+        return await self.encryption_provider.decrypt(filename, content)
 
-            except Exception as e:
-                raise RuntimeError("Sops config file not found cannot continue") from e
+    async def transform_write_file_content(self, filename: str, content: bytes) -> bytes:
+        return await self.encryption_provider.encrypt(filename, content)
 
-        env = {}
-        if encryption_config.key_path is not None:
-            env["SOPS_AGE_KEY_FILE"] = str(encryption_config.key_path)
 
-        return Sops(
-            manager.get_dependency_location("sops"),
-            config=config,
-            env=env,
-        )
+# class EncryptionTransformationProvider(TransformationProtocol):
+#     def __init__(
+#         self,
+#         manager: DependenciesManager,
+#         encryption_config: EncryptionConfig,
+#         storage_driver: StorageProviderProtocol,
+#     ):
+#         self.storage_driver = storage_driver
 
-    @override
-    async def on_file_save(self, filename: str, content: str) -> str:
-        return await self.sops.encrypt(filename, content)
+#         self.sops = self._get_sops_controller(manager, encryption_config)
 
-    @override
-    async def on_file_read(self, filename: str, content: str) -> str:
-        return await self.sops.decrypt(filename, content)
+#     def _get_sops_controller(
+#         self, manager: DependenciesManager, encryption_config: EncryptionConfig | None
+#     ) -> Sops:
+#         if encryption_config is None:
+#             encryption_config = EncryptionConfig()
+
+#         config: str | None = None
+#         if encryption_config.sops_config_path is not None:
+#             path = encryption_config.sops_config_path
+#             try:
+#                 config = self.storage_driver.get_file(str(path))
+
+#             except Exception as e:
+#                 raise RuntimeError("Sops config file not found cannot continue") from e
+
+#         env = {}
+#         if encryption_config.key_path is not None:
+#             env["SOPS_AGE_KEY_FILE"] = str(encryption_config.key_path)
+
+#         return Sops(
+#             manager.require_dependency("sops"),
+#             config=config,
+#             env=env,
+#         )
+
+#     @override
+#     async def on_file_save(self, filename: str, content: str) -> str:
+#         return await self.sops.encrypt(filename, content)
+
+#     @override
+#     async def on_file_read(self, filename: str, content: str) -> str:
+#         return await self.sops.decrypt(filename, content)

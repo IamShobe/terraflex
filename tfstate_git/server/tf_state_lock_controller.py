@@ -4,14 +4,16 @@ from pathlib import Path
 from typing import Iterable, Iterator, override
 
 from tfstate_git.server.base_state_lock_provider import (
-    BaseStateLockProvider,
+    StateLockProviderProtocol,
     Data,
     LockBody,
     LockingError,
 )
-from tfstate_git.server.storage_providers.base_storage_provider import StorageProvider
-from tfstate_git.server.transformation_providers.base_transformation_provider import (
-    TransformationProvider,
+from tfstate_git.server.storage_providers.storage_provider_protocol import (
+    StorageProviderProtocol,
+)
+from tfstate_git.server.transformation_providers.transformation_protocol import (
+    TransformationProtocol,
 )
 
 
@@ -26,18 +28,17 @@ def assume_lock_conflict_on_error(lock_id: str) -> Iterator[None]:
         ) from e
 
 
-class TFStateLockController(BaseStateLockProvider):
+class TFStateLockController(StateLockProviderProtocol):
     def __init__(
         self,
-        storage_driver: StorageProvider,
-        data_transformers: Iterable[TransformationProvider],
+        storage_driver: StorageProviderProtocol,
+        data_transformers: Iterable[TransformationProtocol],
         state_file: Path = Path("terraform.tfstate"),
     ):
         self.state_file = state_file
         self.storage_driver = storage_driver
         self.data_transformers = data_transformers
 
-    @override
     async def get(self) -> Data | None:
         data = self.storage_driver.get_file(str(self.state_file))
         if data is None:
@@ -45,29 +46,30 @@ class TFStateLockController(BaseStateLockProvider):
 
         content = data
         for transformer in self.data_transformers:
-            content = await transformer.on_file_read(str(self.state_file), content)
+            content = await transformer.transform_read_file_content(
+                str(self.state_file), content
+            )
 
         return json.loads(content)
 
-    @override
     async def put(self, lock_id: str, value: Data) -> None:
         await self._check_lock(lock_id)
         # lock is locked by me
 
-        data = json.dumps(value)
+        data = json.dumps(value).encode()
         for transformer in self.data_transformers:
-            data = await transformer.on_file_save(str(self.state_file), data)
+            data = await transformer.transform_write_file_content(
+                str(self.state_file), data
+            )
 
         self.storage_driver.put_file(str(self.state_file), data)
 
-    @override
     async def delete(self, lock_id: str) -> None:
         await self._check_lock(lock_id)
         # lock is locked by me
 
         self.storage_driver.delete_file(str(self.state_file))
 
-    @override
     async def read_lock(self) -> LockBody | None:
         data = self.storage_driver.read_lock(str(self.state_file))
         if data is None:
@@ -91,10 +93,8 @@ class TFStateLockController(BaseStateLockProvider):
 
         return data
 
-    @override
     def lock(self, data: LockBody) -> None:
         self.storage_driver.acquire_lock(str(self.state_file), data)
 
-    @override
     def unlock(self) -> None:
         self.storage_driver.release_lock(str(self.state_file))

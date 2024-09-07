@@ -1,36 +1,73 @@
 import pathlib
-from typing import Collection
-
-from tfstate_git.utils.downloaders.base import DependencyDownloader
+from typing import Awaitable, Callable, Protocol
 
 
-class DependenciesManager:
+def mv_executable_to_dest(src: pathlib.Path, dest: pathlib.Path) -> None:
+    # check if equal to dest
+    if src == dest:
+        return
+
+    # check if dest exists - remove it
+    if dest.exists():
+        dest.unlink()
+
+    src.rename(dest)
+    dest.chmod(0o755)
+
+
+def should_download(expected_locations: dict[str, pathlib.Path]) -> bool:
+    return not all([location.exists() for location in expected_locations.values()])
+
+
+def write_executable_to_file(output_bin: pathlib.Path, content: bytes) -> None:
+    with open(output_bin, "wb") as f:
+        f.write(content)
+
+    output_bin.chmod(0o755)
+
+
+class DownloaderProtocol(Protocol):
+    async def __call__(
+        self, version: str, expected_paths: dict[str, pathlib.Path]
+    ) -> None: ...
+
+
+class DependencyDownloader:
     def __init__(
         self,
-        dependencies: Collection[DependencyDownloader],
-        *,
-        dest_folder: pathlib.Path,
-    ) -> None:
-        self.dependencies = dependencies
-        self.dest_folder = dest_folder
+        names: list[str],
+        version: str,
+        downloader: Callable[
+            [str, dict[str, pathlib.Path]], Awaitable[None]
+        ],
+    ):
+        self.names = names
+        self.version = version
+        self.downloader = downloader
 
-        self._resolved_dependencies: dict[str, pathlib.Path] = {}
-        self._is_initialized = False
+    def get_bin_names(self) -> dict[str, str]:
+        return {name: f"{name}-v{self.version}" for name in self.names}
 
-    async def initialize(self) -> None:
-        for downloader in self.dependencies:
-            results = await downloader.ensure_installed(self.dest_folder)
+    def get_expected_locations(
+        self, dest_folder: pathlib.Path
+    ) -> dict[str, pathlib.Path]:
+        bin_names = self.get_bin_names()
+        return {name: (dest_folder / bin_name) for name, bin_name in bin_names.items()}
 
-            for name, location in results.items():
-                self._resolved_dependencies[name] = location
+    async def ensure_installed(
+        self, dest_folder: pathlib.Path
+    ) -> dict[str, pathlib.Path]:
+        expected_locations = self.get_expected_locations(dest_folder)
+        if should_download(expected_locations):
+            # create directory if it doesn't exist
+            dest_folder.mkdir(parents=True, exist_ok=True)
+            return await self._download(expected_locations)
 
-        self._is_initialized = True
+        return expected_locations
 
-    def get_dependency_location(self, name: str) -> pathlib.Path:
-        if not self._is_initialized:
-            raise RuntimeError("Dependencies have not been initialized")
-
-        if name not in self._resolved_dependencies:
-            raise ValueError(f"Dependency {name} has not been resolved")
-
-        return self._resolved_dependencies[name]
+    async def _download(
+        self, expected_locations: dict[str, pathlib.Path]
+    ) -> dict[str, pathlib.Path]:
+        print(f"Downloading {self.names} client...")
+        await self.downloader(self.version, expected_locations)
+        return expected_locations
