@@ -1,0 +1,28 @@
+{
+    "python.testing.pytestArgs": [
+        "."
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "files.exclude": {
+        ".ruff_cache/**/*": true,
+        ".pytest_cache/**/*": true,
+        ".mypy_cache/**/*": true,
+        ".devbox/**/*": true,
+        ".devbox/**/.*": true,
+        ".idea/shelf/": true,
+        ".idea/workspace.xml": true,
+        ".idea/httpRequests/": true,
+        ".idea/dataSources/": true,
+        ".idea/dataSources.local.xml": true,
+        "**/*.pyc": true,
+        "**/.idea/": true,
+        "**/__pycache__/": true,
+        "**/venv/": true,
+        "**/.devbox/": true,
+        "**/.mypy_cache/": true,
+        "**/.pytest_cache/": true,
+        "**/.ruff_cache/": true
+    },
+    "python.analysis.typeCheckingMode": "basic"
+}

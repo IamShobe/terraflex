@@ -10,7 +10,7 @@ class AgeController(BinaryController):
                 "--encrypt",
                 "/dev/stdin",
             ],
-            input=content.encode(),
+            stdin=content.encode(),
         )
 
     async def decrypt(self, filename: str, content: str):
@@ -20,7 +20,7 @@ class AgeController(BinaryController):
                 "--decrypt",
                 "/dev/stdin",
             ],
-            input=content.encode(),
+            stdin=content.encode(),
         )
 
 
@@ -32,4 +32,4 @@ class AgeKeygenController(BinaryController):
         with open(key_location, "rb") as f:
             key = f.read()
 
-        return (await self._execute_command(["-y"], input=key)).strip()
+        return (await self._execute_command(["-y"], stdin=key)).strip()

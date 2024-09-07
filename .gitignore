@@ -3,3 +3,6 @@
 __pycache__/
 venv/
 .devbox/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

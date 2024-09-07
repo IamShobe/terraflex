@@ -1,0 +1,34 @@
+version: "1"
+
+storage_providers:
+  git:
+    type: git
+    origin_url: git@github.com:IamShobe/tf-state.git
+  
+  # onepassword:
+  #   type: onepassword
+  
+  local:
+    type: local
+    base_dir: /path/to/secrets/
+
+transformers:
+  - type: encryption
+    key_type: age
+    import_from:
+      storage_provider: local
+      storage_params:
+        path: secrets/age_key.txt
+
+  # - type: encryption
+  #   key_type: age
+  #   import_from:
+  #     storage_provider: onepassword
+  #     storage_params:
+  #       vault_id: a123456
+  #       item_id: b123456
+  #       field_name: private_key
+
+state_manager:
+  storage_provider: git
+  state_file: terraform.tfstate

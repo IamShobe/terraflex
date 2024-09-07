@@ -1,11 +1,10 @@
 import abc
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, ConfigDict
 
 
 class LockBody(BaseModel):
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
     ID: str
     Operation: str
@@ -29,6 +28,9 @@ class BaseStateLockProvider(abc.ABC):
 
     @abc.abstractmethod
     async def delete(self, lock_id: str): ...
+
+    @abc.abstractmethod
+    async def read_lock(self) -> Optional[LockBody]: ...
 
     @abc.abstractmethod
     def lock(self, data: LockBody): ...

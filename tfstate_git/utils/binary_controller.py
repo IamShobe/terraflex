@@ -1,16 +1,20 @@
 import asyncio
 import pathlib
+from typing import Mapping, Optional
 
 
 class BinaryController:
     def __init__(
-        self, binary_location: pathlib.Path, cwd: pathlib.Path = None, env=None
+        self,
+        binary_location: pathlib.Path,
+        cwd: Optional[pathlib.Path] = None,
+        env: Optional[Mapping[str, str]] = None,
     ):
         self.binary_location = binary_location
         self.cwd = cwd
         self.env = env or {}
 
-    async def _execute_command(self, args, input=None):
+    async def _execute_command(self, args, stdin=None):
         proc = await asyncio.create_subprocess_exec(
             self.binary_location,
             *args,
@@ -21,8 +25,8 @@ class BinaryController:
             env=self.env,
         )
 
-        stdout, stderr = await proc.communicate(input)
+        stdout, stderr = await proc.communicate(stdin)
         if proc.returncode != 0:
-            raise Exception(f"Failed to execute binary: {stderr.decode()}")
+            raise RuntimeError(f"Failed to execute binary: {stderr.decode()}")
 
         return stdout.decode()

@@ -7,14 +7,16 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from tfstate_git.server.config import Settings
-from tfstate_git.server.base_state_lock_provider import LockBody
-from tfstate_git.server.encrypted_storage_state_lock_provider import (
-    EncryptedStateLockProvider,
-    EncryptionConfig,
+from tfstate_git.server.base_state_lock_provider import BaseStateLockProvider, LockBody
+from tfstate_git.server.tf_state_lock_controller import (
+    TFStateLockController,
     LockingError,
 )
 from tfstate_git.server.storage_providers.git_storage_provider import GitStorageProvider
-from tfstate_git.server.storage_providers.local_storage_provider import LocalStorageProvider
+from tfstate_git.server.transformation_providers.encryption_transformation_provider import (
+    EncryptionConfig,
+    EncryptionTransformationProvider,
+)
 from tfstate_git.utils.dependency_downloader import DependenciesManager
 from tfstate_git.utils.downloaders.age import AgeDownloader
 from tfstate_git.utils.downloaders.base import DependencyDownloader
@@ -46,40 +48,43 @@ async def initialize_manager():
     return manager
 
 
-async def lifespan():
+@asynccontextmanager
+async def lifespan(_: FastAPI):
     manager = await initialize_manager()
 
-    storage_driver = GitStorageProvider(
+    git_storage_driver = GitStorageProvider(
         repo=config.repo_root_dir,
         ref="main",
     )
 
     # storage_driver = LocalStorageProvider("/tmp/some_speed")
 
-    state["controller"] = EncryptedStateLockProvider(
-        manager=manager,
-        storage_driver=storage_driver,
-        encryption_config=EncryptionConfig(
-            sops_config_path=config.sops_config_path,
-            key_path=config.age_key_path,
-        ),
+    state["controller"] = TFStateLockController(
+        storage_driver=git_storage_driver,
+        data_transformers=[
+            EncryptionTransformationProvider(
+                storage_driver=git_storage_driver,
+                manager=manager,
+                encryption_config=EncryptionConfig(
+                    sops_config_path=config.sops_config_path,
+                    key_path=config.age_key_path,
+                ),
+            )
+        ],
         # terraform config
         state_file=config.state_file,
     )
-
-print("Starting server")
-asyncio.run(lifespan())
-print("Server started")
+    yield
 
 
-def get_controller() -> EncryptedStateLockProvider:
+def get_controller() -> BaseStateLockProvider:
     return state["controller"]
 
 
-ControllerDependency = Annotated[EncryptedStateLockProvider, Depends(get_controller)]
+ControllerDependency = Annotated[BaseStateLockProvider, Depends(get_controller)]
 
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 
 @app.exception_handler(LockingError)
@@ -111,7 +116,12 @@ async def update_state(
 
 @app.delete("/state")
 async def delete_state(controller: ControllerDependency):
-    return await controller.delete()
+    # TODO: should check if current user is holding the lock?
+    lock = await controller.read_lock()
+    if lock is None:
+        raise HTTPException(status_code=404, detail="State not found")
+
+    return await controller.delete(lock.ID)
 
 
 @app.put("/lock")

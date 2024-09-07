@@ -1,9 +1,7 @@
 import pathlib
 
 from tfstate_git.server.base_state_lock_provider import LockBody
-from tfstate_git.server.encrypted_storage_state_lock_provider import (
-    StorageProvider,
-)
+from tfstate_git.server.storage_providers.base_storage_provider import StorageProvider
 
 
 class LocalStorageProvider(StorageProvider):

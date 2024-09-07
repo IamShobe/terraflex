@@ -2,7 +2,7 @@ import asyncio
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, Optional, TypeVar
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 import typer
 import yaml
 
@@ -16,20 +16,14 @@ app = typer.Typer()
 
 
 class CreationRule(BaseModel):
-    model_config = {
-        "from_attributes": True,
-        "extra": "allow",
-    }
+    model_config = ConfigDict(from_attributes=True, extra="allow")
 
     path_regex: Optional[str] = None
     age: Optional[str] = None
 
 
 class SopsConfig(BaseModel):
-    model_config = {
-        "from_attributes": True,
-        "extra": "allow",
-    }
+    model_config = ConfigDict(from_attributes=True, extra="allow")
 
     creation_rules: list[CreationRule] = Field(default_factory=list)
 
@@ -40,9 +34,9 @@ def create_default_sops_config(age_public_key: str) -> SopsConfig:
     )
 
 
-def get_existing_age_key(sops_file: str) -> Optional[str]:
+def get_existing_age_key(sops_file: Path) -> Optional[str]:
     if sops_file.exists():
-        with open(sops_file) as f:
+        with sops_file.open() as f:
             raw_content = yaml.safe_load(f)
 
         content = SopsConfig.model_validate(raw_content)
@@ -53,9 +47,9 @@ def get_existing_age_key(sops_file: str) -> Optional[str]:
     return None
 
 
-def upsert_age_key(age_public_key: str, sops_file: str):
+def upsert_age_key(age_public_key: str, sops_file: Path):
     if sops_file.exists():
-        with open(sops_file) as f:
+        with sops_file.open() as f:
             raw_content = yaml.safe_load(f)
 
         content = SopsConfig.model_validate(raw_content)
@@ -72,7 +66,7 @@ def upsert_age_key(age_public_key: str, sops_file: str):
         content = create_default_sops_config(age_public_key)
 
     sops_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(sops_file, "w") as f:
+    with sops_file.open("w") as f:
         yaml.safe_dump(content.model_dump(), f)
 
 
@@ -86,7 +80,7 @@ async def use_existing_private_key(
     existing_public_key = get_existing_age_key(sops_file)
     if existing_public_key is None:  # if no existing key, just add it
         upsert_age_key(public_key, sops_file)
-        return
+        return None
 
     if public_key == existing_public_key:
         return public_key  # nothing to do..
@@ -98,7 +92,7 @@ async def use_existing_private_key(
 
     print("Replacing existing age public key...")
     upsert_age_key(public_key, sops_file)
-    return
+    return None
 
 
 async def _init(force: bool):
@@ -163,17 +157,17 @@ def export(
 
 @app.command(name="import")
 def import_key(
-    input: Annotated[Path, typer.Argument(..., help="Input file for the key")],
+    file_path: Annotated[Path, typer.Argument(..., help="Input file for the key")],
     force: Annotated[
         bool, typer.Option("-f", help="force replacement on existing key")
     ] = False,
 ):
     with capture_aborts():
-        if not input.exists():
+        if not file_path.exists():
             raise typer.Abort("Input file not found")
 
         config.age_key_path.parent.mkdir(parents=True, exist_ok=True)
-        config.age_key_path.write_bytes(input.read_bytes())
+        config.age_key_path.write_bytes(file_path.read_bytes())
 
         asyncio.run(_init(force))
 

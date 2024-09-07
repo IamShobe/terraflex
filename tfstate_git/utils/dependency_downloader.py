@@ -1,12 +1,20 @@
 import pathlib
+from typing import Collection
+
+from tfstate_git.utils.downloaders.base import DependencyDownloader
 
 
 class DependenciesManager:
-    def __init__(self, dependencies, *, dest_folder: pathlib.Path) -> None:
+    def __init__(
+        self,
+        dependencies: Collection[DependencyDownloader],
+        *,
+        dest_folder: pathlib.Path,
+    ) -> None:
         self.dependencies = dependencies
         self.dest_folder = dest_folder
 
-        self._resolved_dependencies = {}
+        self._resolved_dependencies: dict[str, pathlib.Path] = {}
         self._is_initialized = False
 
     async def initialize(self) -> None:
