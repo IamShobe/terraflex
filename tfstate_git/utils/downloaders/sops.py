@@ -9,7 +9,7 @@ from tfstate_git.utils.downloaders.base import BaseDownloader, write_executable_
 
 class SopsDownloader(BaseDownloader):
     @override
-    async def __call__(self, version: str, expected_paths: dict[str, pathlib.Path]):
+    async def __call__(self, version: str, expected_paths: dict[str, pathlib.Path]) -> None:
         arch = platform.machine().lower()
         if arch == "x86_64":
             arch = "amd64"

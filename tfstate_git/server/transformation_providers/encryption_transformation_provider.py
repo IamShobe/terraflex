@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import pathlib
-from typing import Optional
+from typing import Optional, override
 
 from tfstate_git.server.storage_providers.base_storage_provider import StorageProvider
 from tfstate_git.server.transformation_providers.base_transformation_provider import (
@@ -29,16 +29,15 @@ class EncryptionTransformationProvider(TransformationProvider):
 
     def _get_sops_controller(
         self, manager: DependenciesManager, encryption_config: EncryptionConfig | None
-    ):
+    ) -> Sops:
         if encryption_config is None:
             encryption_config = EncryptionConfig()
 
         config: str
         if encryption_config.sops_config_path is not None:
+            path = encryption_config.sops_config_path
             try:
-                config = self.storage_driver.get_file(
-                    str(encryption_config.sops_config_path),
-                )
+                config = self.storage_driver.get_file(str(path))
 
             except Exception as e:
                 raise RuntimeError("Sops config file not found cannot continue") from e
@@ -53,8 +52,10 @@ class EncryptionTransformationProvider(TransformationProvider):
             env=env,
         )
 
+    @override
     async def on_file_save(self, filename: str, content: str) -> str:
         return await self.sops.encrypt(filename, content)
 
+    @override
     async def on_file_read(self, filename: str, content: str) -> str:
         return await self.sops.decrypt(filename, content)

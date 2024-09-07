@@ -1,15 +1,19 @@
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Any, AsyncIterator
 from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 import uvicorn
 
 from tfstate_git.server.config import Settings
-from tfstate_git.server.base_state_lock_provider import BaseStateLockProvider, LockBody
+from tfstate_git.server.base_state_lock_provider import (
+    BaseStateLockProvider,
+    Data,
+    LockBody,
+    LockingError,
+)
 from tfstate_git.server.tf_state_lock_controller import (
     TFStateLockController,
-    LockingError,
 )
 from tfstate_git.server.storage_providers.git_storage_provider import GitStorageProvider
 from tfstate_git.server.transformation_providers.encryption_transformation_provider import (
@@ -22,12 +26,12 @@ from tfstate_git.utils.downloaders.base import DependencyDownloader
 from tfstate_git.utils.downloaders.sops import SopsDownloader
 
 
-config = Settings()
+config = Settings()  # type: ignore
 
 state = {}
 
 
-async def initialize_manager():
+async def initialize_manager() -> DependenciesManager:
     manager = DependenciesManager(
         dependencies=[
             DependencyDownloader(
@@ -48,7 +52,7 @@ async def initialize_manager():
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     manager = await initialize_manager()
 
     git_storage_driver = GitStorageProvider(
@@ -87,7 +91,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.exception_handler(LockingError)
-async def validation_exception_handler(_: Request, exc: LockingError):
+async def validation_exception_handler(_: Request, exc: LockingError) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content=jsonable_encoder({"detail": str(exc), "ID": exc.lock_id}),
@@ -95,7 +99,7 @@ async def validation_exception_handler(_: Request, exc: LockingError):
 
 
 @app.get("/state")
-async def get_state(controller: ControllerDependency):
+async def get_state(controller: ControllerDependency) -> Data:
     # read the state file
     existing_state = await controller.get()
     if existing_state is None:
@@ -106,15 +110,17 @@ async def get_state(controller: ControllerDependency):
 
 @app.post("/state")
 async def update_state(
-    ID: Annotated[str, Query(..., description="ID of the state to update")],
-    new_state: Annotated[dict, Body(..., description="New state")],
+    lock_id: Annotated[
+        str, Query(..., alias="ID", description="ID of the state to update")
+    ],
+    new_state: Annotated[Any, Body(..., description="New state")],
     controller: ControllerDependency,
-):
-    return await controller.put(ID, new_state)
+) -> None:
+    return await controller.put(lock_id, new_state)
 
 
 @app.delete("/state")
-async def delete_state(controller: ControllerDependency):
+async def delete_state(controller: ControllerDependency) -> None:
     # TODO: should check if current user is holding the lock?
     lock = await controller.read_lock()
     if lock is None:
@@ -124,16 +130,16 @@ async def delete_state(controller: ControllerDependency):
 
 
 @app.put("/lock")
-def lock_state(body: LockBody, controller: ControllerDependency):
+def lock_state(body: LockBody, controller: ControllerDependency) -> None:
     return controller.lock(body)
 
 
 @app.delete("/lock")
-def unlock_state(controller: ControllerDependency):
+def unlock_state(controller: ControllerDependency) -> None:
     return controller.unlock()
 
 
-def start_server(port: int):
+def start_server(port: int) -> None:
     uvicorn.run(app, port=port)
 
 

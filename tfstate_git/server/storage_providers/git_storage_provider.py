@@ -18,24 +18,25 @@ class GitStorageProvider(StorageProvider):
         self.repo = repo
         self.ref = ref
 
-    def _git(self, command: str, *args):
+    def _git(self, command: str, *args: str) -> str:
         proc = subprocess.run(
             ["git", command, *args],
             cwd=self.repo,
             capture_output=True,
             text=True,
+            check=False,
         )
 
         if proc.returncode != 0:
-            raise Exception(f"Error running git command: {proc.stderr}")
+            raise RuntimeError(f"Error running git command: {proc.stderr}")
 
         return proc.stdout
 
-    def _cleanup_workspace(self):
+    def _cleanup_workspace(self) -> None:
         self._git("reset", "--hard")
         self._git("checkout", self.ref)
 
-    def get_file(self, file_name: str):
+    def get_file(self, file_name: str) -> str | None:
         self._cleanup_workspace()
         # pull latest changes
         self._git("pull", "origin", self.ref)
@@ -48,7 +49,7 @@ class GitStorageProvider(StorageProvider):
         except FileNotFoundError:
             return None
 
-    def put_file(self, file_name: str, data: str):
+    def put_file(self, file_name: str, data: str) -> None:
         self._cleanup_workspace()
         # pull latest changes
         self._git("pull", "origin", self.ref)
@@ -61,7 +62,7 @@ class GitStorageProvider(StorageProvider):
         self._git("commit", "-m", f"Update state - {file_name}")
         self._git("push", "origin", self.ref)
 
-    def delete_file(self, file_name: str):
+    def delete_file(self, file_name: str) -> None:
         self._cleanup_workspace()
         # pull latest changes
         self._git("pull", "origin", self.ref)
@@ -74,7 +75,7 @@ class GitStorageProvider(StorageProvider):
         self._git("commit", "-m", f"Delete state - {file_name}")
         self._git("push", "origin", self.ref)
 
-    def read_lock(self, file_name: str):
+    def read_lock(self, file_name: str) -> bytes | None:
         self._cleanup_workspace()
         # delete lock branch if it exists
         with suppress(Exception):
@@ -85,14 +86,14 @@ class GitStorageProvider(StorageProvider):
         try:
             self._git("checkout", f"locks/{file_name}")
 
-        except Exception:
+        except RuntimeError:
             return None
 
         # read lock data
         lock_file = self.repo / "locks" / f"{file_name}.lock"
         return lock_file.read_bytes()
 
-    def acquire_lock(self, file_name: str, data: LockBody):
+    def acquire_lock(self, file_name: str, data: LockBody) -> None:
         self._cleanup_workspace()
         # delete lock branch if it exists
         with suppress(Exception):
@@ -115,5 +116,5 @@ class GitStorageProvider(StorageProvider):
         with assume_lock_conflict_on_error(lock_id=data.ID):
             self._git("push", "origin", f"locks/{file_name}")
 
-    def release_lock(self, file_name: str):
+    def release_lock(self, file_name: str) -> None:
         self._git("push", "origin", "--delete", f"locks/{file_name}")

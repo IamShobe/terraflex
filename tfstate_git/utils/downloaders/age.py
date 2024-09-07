@@ -14,7 +14,7 @@ AGE_URL_DOWNLOAD = "https://github.com/FiloSottile/age/releases/download/v{versi
 
 class AgeDownloader(BaseDownloader):
     @override
-    async def __call__(self, version: str, expected_paths: dict[str, pathlib.Path]):
+    async def __call__(self, version: str, expected_paths: dict[str, pathlib.Path]) -> None:
         url = AGE_URL_DOWNLOAD.format(
             version=version,
             # TODO: implement better support

@@ -8,7 +8,7 @@ class LocalStorageProvider(StorageProvider):
     def __init__(self, folder: pathlib.Path) -> None:
         self.folder = pathlib.Path(folder)
 
-    def get_file(self, file_name: str):
+    def get_file(self, file_name: str) -> str | None:
         # read state
         state_file = self.folder / file_name
         try:
@@ -17,17 +17,17 @@ class LocalStorageProvider(StorageProvider):
         except FileNotFoundError:
             return None
 
-    def put_file(self, file_name: str, data: str):
+    def put_file(self, file_name: str, data: str) -> None:
         # save state
         state_file = self.folder / file_name
         state_file.write_text(data)
 
-    def delete_file(self, file_name: str):
+    def delete_file(self, file_name: str) -> None:
         # delete state
         state_file = self.folder / file_name
         state_file.unlink()
 
-    def read_lock(self, file_name: str):
+    def read_lock(self, file_name: str) -> bytes | None:
         # read lock data
         lock_file = self.folder / "locks" / f"{file_name}.lock"
         if not lock_file.exists():
@@ -35,7 +35,7 @@ class LocalStorageProvider(StorageProvider):
 
         return lock_file.read_bytes()
 
-    def acquire_lock(self, file_name: str, data: LockBody):
+    def acquire_lock(self, file_name: str, data: LockBody) -> None:
         # make sure lock folder exists
         locks_dir = self.folder / "locks"
         locks_dir.mkdir(exist_ok=True)
@@ -43,7 +43,7 @@ class LocalStorageProvider(StorageProvider):
         lock_file = locks_dir / f"{file_name}.lock"
         lock_file.write_bytes(data.model_dump_json().encode())
 
-    def release_lock(self, file_name: str):
+    def release_lock(self, file_name: str) -> None:
         locks_dir = self.folder / "locks"
         lock_file = locks_dir / f"{file_name}.lock"
         lock_file.unlink()

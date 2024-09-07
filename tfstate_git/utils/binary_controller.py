@@ -14,7 +14,9 @@ class BinaryController:
         self.cwd = cwd
         self.env = env or {}
 
-    async def _execute_command(self, args, stdin=None):
+    async def _execute_command(
+        self, args: list[str], stdin: Optional[bytes] = None,
+    ) -> str:
         proc = await asyncio.create_subprocess_exec(
             self.binary_location,
             *args,

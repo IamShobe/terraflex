@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import Any, TypeAlias
 from pydantic import BaseModel, ConfigDict
 
 
@@ -13,6 +13,8 @@ class LockBody(BaseModel):
     Created: str
 
 
+Data: TypeAlias = Any
+
 class LockingError(Exception):
     def __init__(self, msg: str, lock_id: str) -> None:
         super().__init__(msg)
@@ -21,19 +23,19 @@ class LockingError(Exception):
 
 class BaseStateLockProvider(abc.ABC):
     @abc.abstractmethod
-    async def get(self): ...
+    async def get(self) -> Data | None: ...
 
     @abc.abstractmethod
-    async def put(self, lock_id: str, value: dict): ...
+    async def put(self, lock_id: str, value: Data) -> None: ...
 
     @abc.abstractmethod
-    async def delete(self, lock_id: str): ...
+    async def delete(self, lock_id: str) -> None: ...
 
     @abc.abstractmethod
-    async def read_lock(self) -> Optional[LockBody]: ...
+    async def read_lock(self) -> LockBody | None: ...
 
     @abc.abstractmethod
-    def lock(self, data: LockBody): ...
+    def lock(self, data: LockBody) -> None: ...
 
     @abc.abstractmethod
-    def unlock(self): ...
+    def unlock(self) -> None: ...

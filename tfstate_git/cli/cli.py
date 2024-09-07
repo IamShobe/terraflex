@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, Optional, TypeVar
+from typing import Annotated, Iterator, Optional, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 import typer
 import yaml
@@ -47,7 +47,7 @@ def get_existing_age_key(sops_file: Path) -> Optional[str]:
     return None
 
 
-def upsert_age_key(age_public_key: str, sops_file: Path):
+def upsert_age_key(age_public_key: str, sops_file: Path) -> None:
     if sops_file.exists():
         with sops_file.open() as f:
             raw_content = yaml.safe_load(f)
@@ -75,7 +75,7 @@ async def use_existing_private_key(
     age_controller: AgeKeygenController,
     private_key_location: Path,
     force: bool,
-) -> Optional[str]:
+) -> str | None:
     public_key = await age_controller.get_public_key(private_key_location)
     existing_public_key = get_existing_age_key(sops_file)
     if existing_public_key is None:  # if no existing key, just add it
@@ -95,7 +95,7 @@ async def use_existing_private_key(
     return None
 
 
-async def _init(force: bool):
+async def _init(force: bool) -> str | None:
     manager = await initialize_manager()
     if manager.get_dependency_location("age-keygen") is None:
         raise typer.Abort("age-keygen not found. Please install it first.")
@@ -125,7 +125,7 @@ R = TypeVar("R")
 
 
 @contextmanager
-def capture_aborts():
+def capture_aborts() -> Iterator[None]:
     try:
         yield
     except typer.Abort as e:
@@ -138,7 +138,7 @@ def init(
     force: Annotated[
         bool, typer.Option("-f", help="force replacement on existing key")
     ] = False,
-):
+) -> None:
     with capture_aborts():
         asyncio.run(_init(force))
 
@@ -146,7 +146,7 @@ def init(
 @app.command()
 def export(
     output: Annotated[Path, typer.Argument(..., help="Output file for the key")],
-):
+) -> None:
     with capture_aborts():
         if not config.age_key_path.exists():
             raise typer.Abort("age key not found. Please initialize it first.")
@@ -161,7 +161,7 @@ def import_key(
     force: Annotated[
         bool, typer.Option("-f", help="force replacement on existing key")
     ] = False,
-):
+) -> None:
     with capture_aborts():
         if not file_path.exists():
             raise typer.Abort("Input file not found")
@@ -175,9 +175,9 @@ def import_key(
 @app.command()
 def start(
     port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
-):
+) -> None:
     start_server(port)
 
 
-def main():
+def main() -> None:
     app()

@@ -5,6 +5,7 @@ from typing import (
     Any,
     Literal,
     Optional,
+    Self,
     Type,
     Union,
     get_args,
@@ -94,7 +95,7 @@ class ConfigFile(BaseModel):
     state_manager: StateManagerConfig
 
     @model_validator(mode="after")
-    def check_transformers_configs(self):
+    def check_transformers_configs(self) -> Self:
         for transformer in self.transformers:
             if transformer.type == "encryption":
                 if (
@@ -129,19 +130,28 @@ class ConfigFile(BaseModel):
 
 
 class Settings(BaseSettings):
-    state_dir: pathlib.Path = Field(
-        default=xdg_base_dirs.xdg_data_home() / PACKAGE_NAME,
-    )
+    state_dir: Annotated[
+        pathlib.Path,
+        Field(
+            default=xdg_base_dirs.xdg_data_home() / PACKAGE_NAME,
+        ),
+    ]
 
-    repo_root_dir: pathlib.Path = Field(
-        default=pathlib.Path.cwd(),
-    )
+    repo_root_dir: Annotated[
+        pathlib.Path,
+        Field(
+            default=pathlib.Path.cwd(),
+        ),
+    ]
 
-    metadata_dir: pathlib.Path = Field(default=".tfstate_git")
+    metadata_dir: Annotated[pathlib.Path, Field(default=pathlib.Path(".tfstate_git"))]
 
-    age_key_path: pathlib.Path = Field(
-        default=xdg_base_dirs.xdg_config_home() / PACKAGE_NAME / "age_key.txt",
-    )
+    age_key_path: Annotated[
+        pathlib.Path,
+        Field(
+            default=xdg_base_dirs.xdg_config_home() / PACKAGE_NAME / "age_key.txt",
+        ),
+    ]
 
     state_file: pathlib.Path = pathlib.Path("terraform2.tfstate")
 

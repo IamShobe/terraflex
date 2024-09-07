@@ -1,10 +1,11 @@
 from contextlib import contextmanager
 import json
 from pathlib import Path
-from typing import Iterable, Optional, override
+from typing import Iterable, Iterator, override
 
 from tfstate_git.server.base_state_lock_provider import (
     BaseStateLockProvider,
+    Data,
     LockBody,
     LockingError,
 )
@@ -15,7 +16,7 @@ from tfstate_git.server.transformation_providers.base_transformation_provider im
 
 
 @contextmanager
-def assume_lock_conflict_on_error(lock_id: str):
+def assume_lock_conflict_on_error(lock_id: str) -> Iterator[None]:
     try:
         yield
     except Exception as e:
@@ -37,7 +38,7 @@ class TFStateLockController(BaseStateLockProvider):
         self.data_transformers = data_transformers
 
     @override
-    async def get(self):
+    async def get(self) -> Data | None:
         data = self.storage_driver.get_file(str(self.state_file))
         if data is None:
             return None
@@ -49,7 +50,7 @@ class TFStateLockController(BaseStateLockProvider):
         return json.loads(content)
 
     @override
-    async def put(self, lock_id: str, value: dict):
+    async def put(self, lock_id: str, value: Data) -> None:
         await self._check_lock(lock_id)
         # lock is locked by me
 
@@ -60,14 +61,14 @@ class TFStateLockController(BaseStateLockProvider):
         self.storage_driver.put_file(str(self.state_file), data)
 
     @override
-    async def delete(self, lock_id: str):
+    async def delete(self, lock_id: str) -> None:
         await self._check_lock(lock_id)
         # lock is locked by me
 
         self.storage_driver.delete_file(str(self.state_file))
 
     @override
-    async def read_lock(self) -> Optional[LockBody]:
+    async def read_lock(self) -> LockBody | None:
         data = self.storage_driver.read_lock(str(self.state_file))
         if data is None:
             return None
@@ -91,9 +92,9 @@ class TFStateLockController(BaseStateLockProvider):
         return data
 
     @override
-    def lock(self, data: LockBody):
+    def lock(self, data: LockBody) -> None:
         self.storage_driver.acquire_lock(str(self.state_file), data)
 
     @override
-    def unlock(self):
+    def unlock(self) -> None:
         self.storage_driver.release_lock(str(self.state_file))

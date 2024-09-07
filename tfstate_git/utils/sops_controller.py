@@ -21,7 +21,7 @@ class Sops(BinaryController):
         self._cached_config_file: pathlib.Path | None = None
 
     @property
-    def config_file(self):
+    def config_file(self) -> pathlib.Path | None:
         # write the config to a temporary file
         if self.config is None:
             return None
@@ -36,7 +36,7 @@ class Sops(BinaryController):
         self._cached_config_file = pathlib.Path(tmp_file)
         return self._cached_config_file
 
-    def _get_common_args(self, filename: str):
+    def _get_common_args(self, filename: str) -> list[str]:
         args = []
         if self.config is not None:
             args.extend(["--config", str(self.config_file)])
@@ -54,7 +54,7 @@ class Sops(BinaryController):
 
         return args
 
-    async def encrypt(self, filename: str, content: str):
+    async def encrypt(self, filename: str, content: str) -> str:
         return await self._execute_command(
             [
                 *self._get_common_args(filename),
@@ -64,7 +64,7 @@ class Sops(BinaryController):
             stdin=content.encode(ENCODING),
         )
 
-    async def decrypt(self, filename: str, content: str):
+    async def decrypt(self, filename: str, content: str) -> str:
         return await self._execute_command(
             [
                 *self._get_common_args(filename),
