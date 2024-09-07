@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
@@ -88,7 +87,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.exception_handler(LockingError)
-async def validation_exception_handler(request: Request, exc: LockingError):
+async def validation_exception_handler(_: Request, exc: LockingError):
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content=jsonable_encoder({"detail": str(exc), "ID": exc.lock_id}),
@@ -98,20 +97,20 @@ async def validation_exception_handler(request: Request, exc: LockingError):
 @app.get("/state")
 async def get_state(controller: ControllerDependency):
     # read the state file
-    state = await controller.get()
-    if state is None:
+    existing_state = await controller.get()
+    if existing_state is None:
         raise HTTPException(status_code=404, detail="State not found")
 
-    return state
+    return existing_state
 
 
 @app.post("/state")
 async def update_state(
     ID: Annotated[str, Query(..., description="ID of the state to update")],
-    state: Annotated[dict, Body(..., description="New state")],
+    new_state: Annotated[dict, Body(..., description="New state")],
     controller: ControllerDependency,
 ):
-    return await controller.put(ID, state)
+    return await controller.put(ID, new_state)
 
 
 @app.delete("/state")
