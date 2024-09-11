@@ -2,12 +2,12 @@ from typing import get_args
 
 from tfstate_git.server.config import (
     STORAGE_PROVIDER_TYPE_TO_PARAMS,
-    StorageProviderConfig,
+    OneOfStorageProviderConfig,
 )
 
 
 def test_config_keys_all_defined():
-    annotated_types = get_args(StorageProviderConfig)
+    annotated_types = get_args(OneOfStorageProviderConfig)
     union_types = get_args(annotated_types[0])  # first element is the Union type
 
     registered_config_types = [

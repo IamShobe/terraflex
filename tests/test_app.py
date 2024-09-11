@@ -1,6 +1,6 @@
 import pytest
 
-from tfstate_git.server.transformation_providers.encryption_transformation_provider import EncryptionTransformation
+from tfstate_git.plugins.encryption_transformation.encryption_transformation_provider import EncryptionTransformation
 
 
 @pytest.mark.anyio

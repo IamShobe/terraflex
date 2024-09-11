@@ -3,14 +3,15 @@ version: "1"
 storage_providers:
   git:
     type: git
-    origin_url: git@github.com:IamShobe/tf-state.git
+    # origin_url: git@github.com:IamShobe/tf-state.git
+    clone_path: ~/git/tf-state
   
   # onepassword:
   #   type: onepassword
   
   local:
     type: local
-    base_dir: ~/secrets/
+    folder: ~/secrets/
 
 transformers:
   - type: encryption
@@ -18,7 +19,7 @@ transformers:
     import_from_storage:
       provider: local
       params:
-        path: secrets/age_key.txt
+        path: age_key.txt
 
   # - type: encryption
   #   key_type: age
@@ -30,5 +31,7 @@ transformers:
   #       field_name: private_key
 
 state_manager:
-  storage_provider: git
-  state_file: terraform.tfstate
+  storage:
+    provider: git
+    params:
+      path: terraform.tfstate

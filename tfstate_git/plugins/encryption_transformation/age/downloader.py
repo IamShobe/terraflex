@@ -23,9 +23,7 @@ class AgeDownloader(DownloaderProtocol):
         return f"{current_platform}-arm64"
 
     @override
-    async def __call__(
-            self, version: str, expected_paths: dict[str, pathlib.Path]
-    ) -> None:
+    async def __call__(self, version: str, expected_paths: dict[str, pathlib.Path]) -> None:
         url = AGE_URL_DOWNLOAD.format(
             version=version,
             platform=self._get_platform_name(),
@@ -38,9 +36,7 @@ class AgeDownloader(DownloaderProtocol):
             )
 
         if response.status_code != 200:
-            raise RuntimeError(
-                f"Failed to download age: {response.status_code} - {response.text}"
-            )
+            raise RuntimeError(f"Failed to download age: {response.status_code} - {response.text}")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             with tempfile.NamedTemporaryFile() as temp:

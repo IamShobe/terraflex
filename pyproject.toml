@@ -51,3 +51,17 @@ disallow_untyped_defs = true
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
+
+
+[tool.poetry.plugins."tfformer.plugins.storage_provider"]
+git = "tfstate_git.plugins.git_storage_provider.git_storage_provider:GitStorageProvider"
+local = "tfstate_git.plugins.local_storage_provider.local_storage_provider:LocalStorageProvider"
+
+[tool.poetry.plugins."tfformer.plugins.transformer"]
+encryption = "tfstate_git.plugins.encryption_transformation.encryption_transformation_provider:EncryptionTransformation"
+
+[tool.poetry.plugins."tfformer.plugins.dependencies"]
+age = "tfstate_git.plugins.encryption_transformation.age.provider:AgeDependency"
+
+[tool.poetry.plugins."tfformer.plugins.transformer.encryption"]
+age = "tfstate_git.plugins.encryption_transformation.age.provider:AgeEncryptionProvider"

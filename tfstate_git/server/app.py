@@ -7,29 +7,44 @@ from fastapi.responses import JSONResponse
 import uvicorn
 import yaml
 
-from tfstate_git.server.adapters.age_controller import AgeController
-from tfstate_git.server.config import ConfigFile, EncryptionTransformerConfig, Settings, StorageProviderConfig
+from tfstate_git.server.config import ConfigFile, Settings
 from tfstate_git.server.base_state_lock_provider import (
     StateLockProviderProtocol,
     Data,
     LockBody,
     LockingError,
 )
-from tfstate_git.server.storage_providers.local_storage_provider import LocalStorageProvider
-from tfstate_git.server.storage_providers.storage_provider_protocol import StorageProviderProtocol
+from tfstate_git.server.storage_provider_base import (
+    STORATE_PROVIDERS_ENTRYPOINT,
+    AbstractStorageProvider,
+)
 from tfstate_git.server.tf_state_lock_controller import (
     TFStateLockController,
 )
-from tfstate_git.server.storage_providers.git_storage_provider import GitStorageProvider
-from tfstate_git.server.transformation_providers.encryption_transformation_provider import (
-    EncryptionTransformation,
+from tfstate_git.server.transformation_base import (
+    TRANSFORMERS_ENTRYPOINT,
+    AbstractTransformation,
 )
-from tfstate_git.server.adapters.downloaders.age import AgeDownloader
-from tfstate_git.server.transformation_providers.transformation_protocol import TransformationProtocol
 from tfstate_git.utils.dependency_downloader import DependencyDownloader
 from tfstate_git.utils.dependency_manager import DependenciesManager
+from tfstate_git.utils.plugins import get_providers, get_providers_instances
 
 config = Settings()  # type: ignore
+
+
+READY_MESSAGE = """\
+backend "http" {{
+    address = "http://localhost:{port}/state"
+    lock_address = "http://localhost:{port}/lock"
+    lock_method = "PUT"
+    unlock_address = "http://localhost:{port}/lock"
+    unlock_method = "DELETE"
+}}
+"""
+
+
+DEPENDENCIES_ENTRYPOINT = "tfformer.plugins.dependencies"
+
 
 config_file_location = Path.cwd() / "examples" / "tfformer.yaml"
 if config_file_location.exists():
@@ -37,91 +52,95 @@ if config_file_location.exists():
     obj = yaml.safe_load(content)
     file_config = ConfigFile.model_validate(obj)
 
-state = {}
-
 
 async def initialize_manager() -> DependenciesManager:
+    dependencies_providers = get_providers_instances(
+        DependencyDownloader,
+        DEPENDENCIES_ENTRYPOINT,
+    )
+
     manager = DependenciesManager(
-        dependencies=[
-            DependencyDownloader(
-                names=["age", "age-keygen"],
-                version="1.2.0",
-                downloader=AgeDownloader(),
-            ),
-        ],
+        dependencies=[downloader.instance for downloader in dependencies_providers.values()],
         dest_folder=config.state_dir,
     )
     await manager.initialize()
     return manager
 
 
-def create_storage_provider(storage_config: StorageProviderConfig) -> StorageProviderProtocol:
-    match storage_config.type:
-        case "local":
-            return LocalStorageProvider(storage_config.base_dir)
+async def generate_transformers(
+    config: ConfigFile,
+    manager: DependenciesManager,
+    storage_providers: dict[str, AbstractStorageProvider],
+) -> list[AbstractTransformation]:
+    transformer_providers = get_providers(
+        AbstractTransformation,
+        TRANSFORMERS_ENTRYPOINT,
+    )
 
-        case "git":
-            return GitStorageProvider(
-                repo=storage_config.origin_url,
-                ref=storage_config.ref,
-            )
-
-        case _:
-            raise ValueError(f"Unsupported storage provider type: {storage_config.type}")
-
-
-def generate_encryption_transformer(transformer_config: EncryptionTransformerConfig, config: ConfigFile) -> EncryptionTransformation:
-    match transformer_config.key_type:
-        case "age":
-            # it's safe to get the key because we are past the validation
-            key_storage = config.storage_providers[transformer_config.import_from_storage.provider]
-            storage_provider = create_storage_provider(key_storage)
-            private_key = storage_provider.get_file(transformer_config.import_from_storage.params.path)
-            
-            
-
-        case _:
-            raise ValueError(f"Unsupported encryption key type: {transformer_config.key_type}")
-
-
-def generate_transformers(config: ConfigFile) -> list[TransformationProtocol]:
     transformers = []
     for transformer in config.transformers:
-        match transformer.type:
-            case "encryption":
-                transformers.append(generate_encryption_transformer(transformer, config))
+        if transformer.type not in transformer_providers:
+            raise ValueError(f"Unsupported transformer type: {transformer.type}")
 
-            case _:
-                raise ValueError(f"Unknown transformer type: {transformer.type}")
+        transformer_class = transformer_providers[transformer.type].model_class
+        transformers.append(
+            await transformer_class.from_config(
+                transformer.model_extra or {},
+                storage_providers=storage_providers,
+                manager=manager,
+            )
+        )
 
     return transformers
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+async def create_storage_providers(
+    config: ConfigFile,
+    manager: DependenciesManager,
+) -> dict[str, AbstractStorageProvider]:
+    storage_providers = get_providers(
+        AbstractStorageProvider,
+        STORATE_PROVIDERS_ENTRYPOINT,
+    )
+
+    result_storage_providers = {}
+    for name, storage_config in config.storage_providers.items():
+        if storage_config.type not in storage_providers:
+            raise ValueError(f"Unsupported storage provider type: {storage_config.type}")
+
+        storage_class = storage_providers[storage_config.type].model_class
+        result_storage_providers[name] = await storage_class.from_config(
+            storage_config.model_extra or {},
+            manager=manager,
+        )
+
+    return result_storage_providers
+
+
+async def initialize_controller() -> StateLockProviderProtocol:
     manager = await initialize_manager()
 
-    git_storage_driver = GitStorageProvider(
-        repo=config.repo_root_dir,
-        ref="main",
+    storage_providers = await create_storage_providers(file_config, manager)
+    transformers = await generate_transformers(file_config, manager, storage_providers)
+    state_manager_storage = file_config.state_manager.storage
+    state_storage_provider = storage_providers.get(state_manager_storage.provider)
+    if state_storage_provider is None:
+        raise ValueError(f"Undeclared storage provider: {state_manager_storage.provider}")
+
+    state_key = state_storage_provider.validate_key(state_manager_storage.params or {})
+    return TFStateLockController(
+        storage_driver=state_storage_provider,
+        data_transformers=transformers,
+        state_file_storage_identifier=state_key,
     )
 
-    # storage_driver = LocalStorageProvider("/tmp/some_speed")
 
-    age_controller = AgeController(
-        binary_location=manager.require_dependency("age"),
-    )
+state = {}
 
-    state["controller"] = TFStateLockController(
-        storage_driver=git_storage_driver,
-        data_transformers=[
-            EncryptionTransformation(
-                encryption_provider=age_controller,
-            ),
-        ],
-        # terraform config
-        state_file=config.state_file,
-    )
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    state["controller"] = await initialize_controller()
     yield
 
 
@@ -154,11 +173,9 @@ async def get_state(controller: ControllerDependency) -> Data:
 
 @app.post("/state")
 async def update_state(
-        lock_id: Annotated[
-            str, Query(..., alias="ID", description="ID of the state to update")
-        ],
-        new_state: Annotated[Any, Body(..., description="New state")],
-        controller: ControllerDependency,
+    lock_id: Annotated[str, Query(..., alias="ID", description="ID of the state to update")],
+    new_state: Annotated[Any, Body(..., description="New state")],
+    controller: ControllerDependency,
 ) -> None:
     return await controller.put(lock_id, new_state)
 
@@ -184,6 +201,8 @@ def unlock_state(controller: ControllerDependency) -> None:
 
 
 def start_server(port: int) -> None:
+    print("Add the following to your terraform configuration:")
+    print(READY_MESSAGE.format(port=port))
     uvicorn.run(app, port=port)
 
 

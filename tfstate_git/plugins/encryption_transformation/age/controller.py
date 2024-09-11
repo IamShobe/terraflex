@@ -1,21 +1,17 @@
 from pathlib import Path
 import tempfile
-from typing import Mapping
 
-from tfstate_git.server.transformation_providers.encryption_transformation_provider import EncryptionProtocol
 from tfstate_git.utils.binary_controller import BinaryController
 
 
-class AgeController(BinaryController, EncryptionProtocol):
+class AgeController(BinaryController):
     def __init__(
         self,
         binary_location: Path,
         private_key: bytes,
         public_key: bytes,
-        cwd: Path | None = None,
-        env: Mapping[str, str] | None = None,
     ):
-        super().__init__(binary_location, cwd, env)
+        super().__init__(binary_location)
         self.private_key = private_key
         self.public_key = public_key
 

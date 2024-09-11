@@ -1,7 +1,5 @@
-from contextlib import contextmanager
 import json
-from pathlib import Path
-from typing import Iterable, Iterator, override
+from typing import Iterable
 
 from tfstate_git.server.base_state_lock_provider import (
     StateLockProviderProtocol,
@@ -9,46 +7,36 @@ from tfstate_git.server.base_state_lock_provider import (
     LockBody,
     LockingError,
 )
-from tfstate_git.server.storage_providers.storage_provider_protocol import (
-    StorageProviderProtocol,
+from tfstate_git.server.storage_provider_base import (
+    AbstractStorageProvider,
+    ItemKey,
 )
-from tfstate_git.server.transformation_providers.transformation_protocol import (
-    TransformationProtocol,
+from tfstate_git.server.transformation_base import (
+    AbstractTransformation,
 )
-
-
-@contextmanager
-def assume_lock_conflict_on_error(lock_id: str) -> Iterator[None]:
-    try:
-        yield
-    except Exception as e:
-        raise LockingError(
-            "Failed to lock state",
-            lock_id=lock_id,
-        ) from e
 
 
 class TFStateLockController(StateLockProviderProtocol):
     def __init__(
         self,
-        storage_driver: StorageProviderProtocol,
-        data_transformers: Iterable[TransformationProtocol],
-        state_file: Path = Path("terraform.tfstate"),
+        storage_driver: AbstractStorageProvider,
+        data_transformers: Iterable[AbstractTransformation],
+        state_file_storage_identifier: ItemKey,
     ):
-        self.state_file = state_file
+        self.state_storage_identifier = state_file_storage_identifier
         self.storage_driver = storage_driver
         self.data_transformers = data_transformers
 
     async def get(self) -> Data | None:
-        data = self.storage_driver.get_file(str(self.state_file))
-        if data is None:
+        try:
+            data = self.storage_driver.get_file(self.state_storage_identifier)
+
+        except FileNotFoundError:
             return None
 
         content = data
         for transformer in self.data_transformers:
-            content = await transformer.transform_read_file_content(
-                str(self.state_file), content
-            )
+            content = await transformer.transform_read_file_content(self.state_storage_identifier.as_string(), content)
 
         return json.loads(content)
 
@@ -58,21 +46,21 @@ class TFStateLockController(StateLockProviderProtocol):
 
         data = json.dumps(value).encode()
         for transformer in self.data_transformers:
-            data = await transformer.transform_write_file_content(
-                str(self.state_file), data
-            )
+            data = await transformer.transform_write_file_content(self.state_storage_identifier.as_string(), data)
 
-        self.storage_driver.put_file(str(self.state_file), data)
+        self.storage_driver.put_file(self.state_storage_identifier, data)
 
     async def delete(self, lock_id: str) -> None:
         await self._check_lock(lock_id)
         # lock is locked by me
 
-        self.storage_driver.delete_file(str(self.state_file))
+        self.storage_driver.delete_file(self.state_storage_identifier)
 
     async def read_lock(self) -> LockBody | None:
-        data = self.storage_driver.read_lock(str(self.state_file))
-        if data is None:
+        try:
+            data = self.storage_driver.read_lock(self.state_storage_identifier)
+
+        except FileNotFoundError:
             return None
 
         return LockBody.model_validate_json(data)
@@ -94,7 +82,7 @@ class TFStateLockController(StateLockProviderProtocol):
         return data
 
     def lock(self, data: LockBody) -> None:
-        self.storage_driver.acquire_lock(str(self.state_file), data)
+        self.storage_driver.acquire_lock(self.state_storage_identifier, data)
 
     def unlock(self) -> None:
-        self.storage_driver.release_lock(str(self.state_file))
+        self.storage_driver.release_lock(self.state_storage_identifier)
