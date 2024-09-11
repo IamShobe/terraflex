@@ -60,8 +60,8 @@ local = "tfstate_git.plugins.local_storage_provider.local_storage_provider:Local
 [tool.poetry.plugins."tfformer.plugins.transformer"]
 encryption = "tfstate_git.plugins.encryption_transformation.encryption_transformation_provider:EncryptionTransformation"
 
-[tool.poetry.plugins."tfformer.plugins.dependencies"]
-age = "tfstate_git.plugins.encryption_transformation.age.provider:AgeDependency"
-
 [tool.poetry.plugins."tfformer.plugins.transformer.encryption"]
 age = "tfstate_git.plugins.encryption_transformation.age.provider:AgeEncryptionProvider"
+
+[tool.poetry.plugins."tfformer.plugins.dependencies"]
+age = "tfstate_git.plugins.encryption_transformation.age.provider:AgeDependency"
