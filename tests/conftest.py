@@ -1,8 +1,8 @@
 import pytest
 
-from tfstate_git.server.adapters.age_controller import AgeController, AgeKeygenController
-from tfstate_git.server.adapters.downloaders.age import AgeDownloader
-from tfstate_git.utils.base import DependencyDownloader
+from tfstate_git.plugins.encryption_transformation.age.controller import AgeController, AgeKeygenController
+from tfstate_git.plugins.encryption_transformation.age.downloader import AgeDownloader
+from tfstate_git.utils.dependency_downloader import DependencyDownloader
 
 pytestmark = pytest.mark.anyio
 
@@ -17,7 +17,7 @@ async def age_gen_controller(tmp_path):
     downloader = DependencyDownloader(
         names=["age", "age-keygen"],
         version="1.2.0",
-        download_file_callback=AgeDownloader(),
+        downloader=AgeDownloader(),
     )
 
     await downloader.ensure_installed(tmp_path)
