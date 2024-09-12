@@ -10,9 +10,14 @@ The closest solution I found was [terraform-backend-git](https://github.com/plum
 Eventually I had the idea of creating an **extendable modular terraform http backend** - which allows customizing the state using `transformations` (like encryption), and getting starting with it will be as simple as running single command.
 
 ## Installation
-recommended apporach is using [pipx](https://github.com/pypa/pipx):
+Recommended apporach is using [pipx](https://github.com/pypa/pipx):
 ```bash
 pipx install terraflex
+```
+
+Upgrade using:
+```bash
+pipx upgrade terraflex
 ```
 
 ## Getting started
