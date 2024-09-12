@@ -345,10 +345,21 @@ def wait_until_ready(port: int):
 
 @app.command()
 def wrap(
-    args: Annotated[list[str], typer.Argument(help="Command to run")],
+    verbose: Annotated[
+        bool,
+        typer.Option("-v", "--verbose", help="Print more details about the backend"),
+    ] = False,
     port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
+    args: list[str] = typer.Argument(help="Command to run"),
 ) -> None:
-    instance = UvicornServer(config=Config(app=server_app, port=port))
+    instance = UvicornServer(
+        config=Config(
+            app=server_app,
+            port=port,
+            access_log=verbose,
+            log_level="info" if verbose else "warning",
+        )
+    )
     instance.start()
     wait_until_ready(port)
     # run the command
