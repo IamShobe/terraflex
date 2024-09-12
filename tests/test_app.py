@@ -1,6 +1,6 @@
 import pytest
 
-from tfstate_git.plugins.encryption_transformation.encryption_transformation_provider import EncryptionTransformation
+from terraflex.plugins.encryption_transformation.encryption_transformation_provider import EncryptionTransformation
 
 
 @pytest.mark.anyio

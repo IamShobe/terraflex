@@ -2,13 +2,13 @@ from typing import Any, Self, override
 
 from pydantic import BaseModel
 
-from tfstate_git.plugins.encryption_transformation.age.controller import AgeController, AgeKeygenController
-from tfstate_git.plugins.encryption_transformation.age.downloader import AgeDownloader
-from tfstate_git.plugins.encryption_transformation.encryption_base import AbstractEncryption
-from tfstate_git.server.config import StorageProviderUsageConfig
-from tfstate_git.server.storage_provider_base import AbstractStorageProvider
-from tfstate_git.utils.dependency_downloader import DependencyDownloader
-from tfstate_git.utils.dependency_manager import DependenciesManager
+from terraflex.plugins.encryption_transformation.age.controller import AgeController, AgeKeygenController
+from terraflex.plugins.encryption_transformation.age.downloader import AgeDownloader
+from terraflex.plugins.encryption_transformation.encryption_base import AbstractEncryption
+from terraflex.server.config import StorageProviderUsageConfig
+from terraflex.server.storage_provider_base import AbstractStorageProvider
+from terraflex.utils.dependency_downloader import DependencyDownloader
+from terraflex.utils.dependency_manager import DependenciesManager
 
 
 class AgeKeyConfig(BaseModel):

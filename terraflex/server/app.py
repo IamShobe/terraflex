@@ -7,27 +7,27 @@ from fastapi.responses import JSONResponse
 import uvicorn
 import yaml
 
-from tfstate_git.server.config import ConfigFile, Settings
-from tfstate_git.server.base_state_lock_provider import (
+from terraflex.server.config import ConfigFile, Settings
+from terraflex.server.base_state_lock_provider import (
     StateLockProviderProtocol,
     Data,
     LockBody,
     LockingError,
 )
-from tfstate_git.server.storage_provider_base import (
+from terraflex.server.storage_provider_base import (
     STORATE_PROVIDERS_ENTRYPOINT,
     AbstractStorageProvider,
 )
-from tfstate_git.server.tf_state_lock_controller import (
+from terraflex.server.tf_state_lock_controller import (
     TFStateLockController,
 )
-from tfstate_git.server.transformation_base import (
+from terraflex.server.transformation_base import (
     TRANSFORMERS_ENTRYPOINT,
     AbstractTransformation,
 )
-from tfstate_git.utils.dependency_downloader import DependencyDownloader
-from tfstate_git.utils.dependency_manager import DependenciesManager
-from tfstate_git.utils.plugins import get_providers, get_providers_instances
+from terraflex.utils.dependency_downloader import DependencyDownloader
+from terraflex.utils.dependency_manager import DependenciesManager
+from terraflex.utils.plugins import get_providers, get_providers_instances
 
 config = Settings()  # type: ignore
 
@@ -43,9 +43,9 @@ backend "http" {{
 """
 
 
-DEPENDENCIES_ENTRYPOINT = "tfformer.plugins.dependencies"
+DEPENDENCIES_ENTRYPOINT = "terraflex.plugins.dependencies"
 
-CONFIG_FILE_NAME = "tfformer.yaml"
+CONFIG_FILE_NAME = "terraflex.yaml"
 
 
 async def initialize_manager() -> DependenciesManager:

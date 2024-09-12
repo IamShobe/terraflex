@@ -1,17 +1,17 @@
 import json
 from typing import Iterable
 
-from tfstate_git.server.base_state_lock_provider import (
+from terraflex.server.base_state_lock_provider import (
     StateLockProviderProtocol,
     Data,
     LockBody,
     LockingError,
 )
-from tfstate_git.server.storage_provider_base import (
+from terraflex.server.storage_provider_base import (
     AbstractStorageProvider,
     ItemKey,
 )
-from tfstate_git.server.transformation_base import (
+from terraflex.server.transformation_base import (
     AbstractTransformation,
 )
 

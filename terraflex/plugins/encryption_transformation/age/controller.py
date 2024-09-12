@@ -1,7 +1,7 @@
 from pathlib import Path
 import tempfile
 
-from tfstate_git.utils.binary_controller import BinaryController
+from terraflex.utils.binary_controller import BinaryController
 
 
 class AgeController(BinaryController):

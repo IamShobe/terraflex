@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "tfstate-git"
+name = "terraflex"
 version = "0.1.0"
 description = ""
 authors = ["Elran Shefer <elran777@gmail.com>"]
@@ -28,9 +28,6 @@ anyio = "^4.4.0"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.scripts]
-tfstate-git = "tfstate_git.cli.cli:main"
-
 [tool.ruff]
 line-length = 120
 
@@ -52,16 +49,18 @@ init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
 
+[tool.poetry.scripts]
+terraflex = "terraflex.cli.cli:main"
 
-[tool.poetry.plugins."tfformer.plugins.storage_provider"]
-git = "tfstate_git.plugins.git_storage_provider.git_storage_provider:GitStorageProvider"
-local = "tfstate_git.plugins.local_storage_provider.local_storage_provider:LocalStorageProvider"
+[tool.poetry.plugins."terraflex.plugins.storage_provider"]
+git = "terraflex.plugins.git_storage_provider.git_storage_provider:GitStorageProvider"
+local = "terraflex.plugins.local_storage_provider.local_storage_provider:LocalStorageProvider"
 
-[tool.poetry.plugins."tfformer.plugins.transformer"]
-encryption = "tfstate_git.plugins.encryption_transformation.encryption_transformation_provider:EncryptionTransformation"
+[tool.poetry.plugins."terraflex.plugins.transformer"]
+encryption = "terraflex.plugins.encryption_transformation.encryption_transformation_provider:EncryptionTransformation"
 
-[tool.poetry.plugins."tfformer.plugins.transformer.encryption"]
-age = "tfstate_git.plugins.encryption_transformation.age.provider:AgeEncryptionProvider"
+[tool.poetry.plugins."terraflex.plugins.transformer.encryption"]
+age = "terraflex.plugins.encryption_transformation.age.provider:AgeEncryptionProvider"
 
-[tool.poetry.plugins."tfformer.plugins.dependencies"]
-age = "tfstate_git.plugins.encryption_transformation.age.provider:AgeDependency"
+[tool.poetry.plugins."terraflex.plugins.dependencies"]
+age = "terraflex.plugins.encryption_transformation.age.provider:AgeDependency"

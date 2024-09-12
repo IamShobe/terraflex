@@ -1,8 +1,8 @@
 import pytest
 
-from tfstate_git.plugins.encryption_transformation.age.controller import AgeController, AgeKeygenController
-from tfstate_git.plugins.encryption_transformation.age.downloader import AgeDownloader
-from tfstate_git.utils.dependency_downloader import DependencyDownloader
+from terraflex.plugins.encryption_transformation.age.controller import AgeController, AgeKeygenController
+from terraflex.plugins.encryption_transformation.age.downloader import AgeDownloader
+from terraflex.utils.dependency_downloader import DependencyDownloader
 
 pytestmark = pytest.mark.anyio
 

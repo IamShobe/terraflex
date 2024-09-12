@@ -5,14 +5,14 @@ from typing import Any, Optional, Self, override
 
 from pydantic import BaseModel
 
-from tfstate_git.server.base_state_lock_provider import LockBody
+from terraflex.server.base_state_lock_provider import LockBody
 
-from tfstate_git.server.storage_provider_base import (
+from terraflex.server.storage_provider_base import (
     ItemKey,
     AbstractStorageProvider,
     assume_lock_conflict_on_error,
 )
-from tfstate_git.utils.dependency_manager import DependenciesManager
+from terraflex.utils.dependency_manager import DependenciesManager
 
 
 class GitStorageProviderItemIdentifier(ItemKey):

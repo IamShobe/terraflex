@@ -5,10 +5,10 @@ from typing import Any, Iterator, Self
 
 from pydantic import BaseModel
 
-from tfstate_git.server.base_state_lock_provider import LockBody, LockingError
-from tfstate_git.utils.dependency_manager import DependenciesManager
+from terraflex.server.base_state_lock_provider import LockBody, LockingError
+from terraflex.utils.dependency_manager import DependenciesManager
 
-STORATE_PROVIDERS_ENTRYPOINT = "tfformer.plugins.storage_provider"
+STORATE_PROVIDERS_ENTRYPOINT = "terraflex.plugins.storage_provider"
 
 
 class ItemKey(BaseModel):

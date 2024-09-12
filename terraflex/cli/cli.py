@@ -11,8 +11,8 @@ from uvicorn import Config, Server
 import yaml
 import questionary
 
-from tfstate_git.plugins.encryption_transformation.age.controller import AgeKeygenController
-from tfstate_git.server.app import (
+from terraflex.plugins.encryption_transformation.age.controller import AgeKeygenController
+from terraflex.server.app import (
     CONFIG_FILE_NAME,
     READY_MESSAGE,
     create_storage_providers,
@@ -21,25 +21,25 @@ from tfstate_git.server.app import (
     app as server_app,
     config as server_config,
 )
-from tfstate_git.server.config import (
+from terraflex.server.config import (
     ConfigFile,
     StateManagerConfig,
     StorageProviderConfig,
     StorageProviderUsageConfig,
     TransformerConfig,
 )
-from tfstate_git.plugins.git_storage_provider.git_storage_provider import (
+from terraflex.plugins.git_storage_provider.git_storage_provider import (
     GitStorageProviderInitConfig,
     GitStorageProviderItemIdentifier,
 )
-from tfstate_git.plugins.local_storage_provider.local_storage_provider import (
+from terraflex.plugins.local_storage_provider.local_storage_provider import (
     LocalStorageProviderInitConfig,
     LocalStorageProviderItemIdentifier,
 )
 
-from tfstate_git.plugins.encryption_transformation.encryption_transformation_provider import EncryptionTransformerConfig
-from tfstate_git.plugins.encryption_transformation.age.provider import AgeKeyConfig
-from tfstate_git.utils.dependency_manager import DependenciesManager
+from terraflex.plugins.encryption_transformation.encryption_transformation_provider import EncryptionTransformerConfig
+from terraflex.plugins.encryption_transformation.age.provider import AgeKeyConfig
+from terraflex.utils.dependency_manager import DependenciesManager
 
 
 app = typer.Typer(pretty_exceptions_enable=False)

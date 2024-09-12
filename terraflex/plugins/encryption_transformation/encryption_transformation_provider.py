@@ -4,15 +4,15 @@ from typing import Any, Optional, Self, override
 
 from pydantic import BaseModel, ConfigDict
 
-from tfstate_git.plugins.encryption_transformation.encryption_base import AbstractEncryption
-from tfstate_git.server.storage_provider_base import AbstractStorageProvider
-from tfstate_git.server.transformation_base import (
+from terraflex.plugins.encryption_transformation.encryption_base import AbstractEncryption
+from terraflex.server.storage_provider_base import AbstractStorageProvider
+from terraflex.server.transformation_base import (
     AbstractTransformation,
 )
-from tfstate_git.utils.dependency_manager import DependenciesManager
-from tfstate_git.utils.plugins import get_providers
+from terraflex.utils.dependency_manager import DependenciesManager
+from terraflex.utils.plugins import get_providers
 
-ENCRYPTION_PROVIDER_ENTRYPOINT = "tfformer.plugins.transformer.encryption"
+ENCRYPTION_PROVIDER_ENTRYPOINT = "terraflex.plugins.transformer.encryption"
 
 
 @dataclass

@@ -2,11 +2,11 @@ import abc
 import pathlib
 from typing import Any, Self
 
-from tfstate_git.server.storage_provider_base import AbstractStorageProvider
-from tfstate_git.utils.dependency_manager import DependenciesManager
+from terraflex.server.storage_provider_base import AbstractStorageProvider
+from terraflex.utils.dependency_manager import DependenciesManager
 
 
-TRANSFORMERS_ENTRYPOINT = "tfformer.plugins.transformer"
+TRANSFORMERS_ENTRYPOINT = "terraflex.plugins.transformer"
 
 
 class AbstractTransformation(abc.ABC):

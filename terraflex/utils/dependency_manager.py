@@ -1,7 +1,7 @@
 import pathlib
 from typing import Collection
 
-from tfstate_git.utils.dependency_downloader import DependencyDownloader
+from terraflex.utils.dependency_downloader import DependencyDownloader
 
 
 class DependenciesManager:

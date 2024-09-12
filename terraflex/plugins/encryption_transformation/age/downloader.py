@@ -6,7 +6,7 @@ from typing import override
 
 import httpx
 
-from tfstate_git.utils.dependency_downloader import DownloaderProtocol, mv_executable_to_dest
+from terraflex.utils.dependency_downloader import DownloaderProtocol, mv_executable_to_dest
 
 # pylint: disable=line-too-long
 AGE_URL_DOWNLOAD = "https://github.com/FiloSottile/age/releases/download/v{version}/age-v{version}-{platform}.tar.gz"
