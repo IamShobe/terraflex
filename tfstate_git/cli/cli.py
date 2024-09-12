@@ -1,127 +1,48 @@
 import asyncio
 from contextlib import contextmanager
-from pathlib import Path
-from typing import Annotated, Iterator, Optional, TypeVar
-from pydantic import BaseModel, ConfigDict, Field
+import multiprocessing
+import subprocess
+import pathlib
+import time
+from typing import Annotated, Iterator, Optional
+import httpx
 import typer
+from uvicorn import Config, Server
 import yaml
+import questionary
 
-from tfstate_git.server.app import initialize_manager, start_server
-from tfstate_git.server.adapters.age_controller import AgeKeygenController
-from tfstate_git.server.app import config
+from tfstate_git.plugins.encryption_transformation.age.controller import AgeKeygenController
+from tfstate_git.server.app import (
+    CONFIG_FILE_NAME,
+    READY_MESSAGE,
+    create_storage_providers,
+    initialize_manager,
+    start_server,
+    app as server_app,
+    config as server_config,
+)
+from tfstate_git.server.config import (
+    ConfigFile,
+    StateManagerConfig,
+    StorageProviderConfig,
+    StorageProviderUsageConfig,
+    TransformerConfig,
+)
+from tfstate_git.plugins.git_storage_provider.git_storage_provider import (
+    GitStorageProviderInitConfig,
+    GitStorageProviderItemIdentifier,
+)
+from tfstate_git.plugins.local_storage_provider.local_storage_provider import (
+    LocalStorageProviderInitConfig,
+    LocalStorageProviderItemIdentifier,
+)
 
-TFSTATE_REGEX = r"\.tfstate$"
-
-app = typer.Typer()
-
-
-class CreationRule(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="allow")
-
-    path_regex: Optional[str] = None
-    age: Optional[str] = None
-
-
-class SopsConfig(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="allow")
-
-    creation_rules: list[CreationRule] = Field(default_factory=list)
-
-
-def create_default_sops_config(age_public_key: str) -> SopsConfig:
-    return SopsConfig(
-        creation_rules=[CreationRule(path_regex=TFSTATE_REGEX, age=age_public_key)]
-    )
-
-
-def get_existing_age_key(sops_file: Path) -> Optional[str]:
-    if sops_file.exists():
-        with sops_file.open() as f:
-            raw_content = yaml.safe_load(f)
-
-        content = SopsConfig.model_validate(raw_content)
-        for rule in content.creation_rules:
-            if rule.path_regex is not None and rule.path_regex == TFSTATE_REGEX:
-                return rule.age
-
-    return None
+from tfstate_git.plugins.encryption_transformation.encryption_transformation_provider import EncryptionTransformerConfig
+from tfstate_git.plugins.encryption_transformation.age.provider import AgeKeyConfig
+from tfstate_git.utils.dependency_manager import DependenciesManager
 
 
-def upsert_age_key(age_public_key: str, sops_file: Path) -> None:
-    if sops_file.exists():
-        with sops_file.open() as f:
-            raw_content = yaml.safe_load(f)
-
-        content = SopsConfig.model_validate(raw_content)
-        for rule in content.creation_rules:
-            if rule.path_regex is not None and rule.path_regex == TFSTATE_REGEX:
-                rule.age = age_public_key
-                break
-        else:
-            content.creation_rules.append(
-                CreationRule(path_regex=TFSTATE_REGEX, age=age_public_key)
-            )
-
-    else:
-        content = create_default_sops_config(age_public_key)
-
-    sops_file.parent.mkdir(parents=True, exist_ok=True)
-    with sops_file.open("w") as f:
-        yaml.safe_dump(content.model_dump(), f)
-
-
-async def use_existing_private_key(
-    sops_file: Path,
-    age_controller: AgeKeygenController,
-    private_key_location: Path,
-    force: bool,
-) -> str | None:
-    public_key = await age_controller.get_public_key(private_key_location)
-    existing_public_key = get_existing_age_key(sops_file)
-    if existing_public_key is None:  # if no existing key, just add it
-        upsert_age_key(public_key, sops_file)
-        return None
-
-    if public_key == existing_public_key:
-        return public_key  # nothing to do..
-
-    if not force:
-        raise typer.Abort(
-            f"age key already exists with public key: {existing_public_key}. Use -f to force replacement."
-        )
-
-    print("Replacing existing age public key...")
-    upsert_age_key(public_key, sops_file)
-    return None
-
-
-async def _init(force: bool) -> str | None:
-    manager = await initialize_manager()
-    if manager.require_dependency("age-keygen") is None:
-        raise typer.Abort("age-keygen not found. Please install it first.")
-
-    age_controller = AgeKeygenController(
-        binary_location=manager.require_dependency("age-keygen"),
-        cwd=Path.cwd(),
-    )
-
-    sops_file = config.sops_config_path
-
-    private_key_location = config.age_key_path
-    if not private_key_location.exists():
-        print(
-            "Generating new age key... for state encryption at ", private_key_location
-        )
-        # create the key
-        private_key_location.parent.mkdir(parents=True, exist_ok=True)
-        await age_controller.generate_key(private_key_location)
-
-    return await use_existing_private_key(
-        sops_file, age_controller, private_key_location, force
-    )
-
-
-R = TypeVar("R")
+app = typer.Typer(pretty_exceptions_enable=False)
 
 
 @contextmanager
@@ -133,43 +54,267 @@ def capture_aborts() -> Iterator[None]:
         raise
 
 
+async def build_git_storage_provider() -> StorageProviderConfig:
+    origin_url = await questionary.path(
+        "What is the origin url?",
+    ).ask_async()
+
+    return StorageProviderConfig(
+        type="git",
+        **GitStorageProviderInitConfig(origin_url=origin_url).model_dump(),
+    )
+
+
+async def build_git_key_identifier(
+    provider_name, path, question="What is the location of the file?"
+) -> StorageProviderUsageConfig:
+    path = await questionary.text(
+        question,
+        default=path,
+    ).ask_async()
+
+    return StorageProviderUsageConfig(
+        provider=provider_name,
+        params=GitStorageProviderItemIdentifier(path=path).model_dump(),
+    )
+
+
+async def build_local_storage_provider(local_storage_default_path: Optional[str] = None) -> StorageProviderConfig:
+    folder = pathlib.Path(
+        await questionary.path(
+            "Where is the folder located?",
+            default=local_storage_default_path or "",
+        ).ask_async()
+    )
+
+    return StorageProviderConfig(
+        type="local",
+        **LocalStorageProviderInitConfig(folder=folder).model_dump(),
+    )
+
+
+async def build_local_key_identifier(
+    provider_name, path, question="What is the location of the file?"
+) -> StorageProviderUsageConfig:
+    path = await questionary.text(
+        question,
+        default=path,
+    ).ask_async()
+
+    return StorageProviderUsageConfig(
+        provider=provider_name,
+        params=LocalStorageProviderItemIdentifier(path=path).model_dump(),
+    )
+
+
+async def add_encryption_transformer(
+    state_storage_provider_name: str, config_file: ConfigFile, manager: DependenciesManager
+) -> None:
+    key_type = await questionary.select(
+        "What type of key do you want to use for encryption?",
+        choices=[
+            "age",
+        ],
+    ).ask_async()
+
+    match key_type:
+        case "age":
+            choices = [
+                *[
+                    questionary.Choice(f"{key} ({value.type})", value=(key, value))
+                    for key, value in config_file.storage_providers.items()
+                    if key != state_storage_provider_name
+                ],
+                questionary.Choice("Create a new storage", value="create"),
+            ]
+
+            selected_storage_provider = await questionary.select(
+                "Where should the key be stored?",
+                choices=choices,
+            ).ask_async()
+
+            if selected_storage_provider == "create":
+                provider_name, storage_provider, key_identifier = await create_storage_provider_and_key(
+                    main_question="How do you want to store the secret?",
+                    key_question="What is the location of the secret key?",
+                    default_key_path="age-key.txt",
+                    storage_provider_name="encryption",
+                    local_storage_default_path="~/secrets/",
+                    possible_providers=["Local"],
+                )
+
+                config_file.storage_providers[provider_name] = storage_provider
+
+            else:
+                provider_name, storage_provider_config = selected_storage_provider
+                # get a new key for the storage provider
+                match storage_provider_config.type:
+                    case "local":
+                        key_identifier = await build_local_key_identifier(provider_name, path="age-key.txt")
+
+                    case "git":
+                        key_identifier = await build_git_key_identifier(provider_name, path="age-key.txt")
+
+                    case _:
+                        raise ValueError("Invalid selection")
+
+            controller_location = manager.require_dependency("age-keygen")
+            controller = AgeKeygenController(
+                binary_location=controller_location,
+            )
+            private_key = await controller.generate_key_bytes()
+
+            storage_providers = await create_storage_providers(
+                config_file,
+                manager,
+                workdir=server_config.state_dir,
+            )
+
+            storage_provider_instance = storage_providers[provider_name]
+            item_key = storage_provider_instance.validate_key(key_identifier.params or {})
+            try:
+                storage_provider_instance.get_file(item_key)
+                # file exists, ask if we should replace it
+                should_replace = await questionary.confirm(
+                    "The key already exists, do you want to replace it?",
+                    default=False,
+                ).ask_async()
+                if not should_replace:
+                    print("Aborting...")
+                    return
+
+            except FileNotFoundError:
+                pass
+
+            storage_provider_instance.put_file(item_key, private_key)
+
+            encryption_config = EncryptionTransformerConfig(
+                key_type="age",
+                **AgeKeyConfig(
+                    import_from_storage=key_identifier,
+                ).model_dump(),
+            )
+
+        case _:
+            raise ValueError("Invalid selection")
+
+    transformer_config = TransformerConfig(
+        type="encryption",
+        **encryption_config.model_dump(),
+    )
+    config_file.transformers.append(transformer_config)
+
+
+async def create_storage_provider_and_key(
+    main_question: str,
+    key_question: str,
+    default_key_path: str,
+    storage_provider_name: Optional[str] = None,
+    local_storage_default_path: Optional[str] = None,
+    possible_providers=None,
+):
+    if possible_providers is None:
+        possible_providers = [
+            "Git",
+            "Local",
+        ]
+
+    # ask how to store the state
+    answer = await questionary.select(
+        main_question,
+        choices=possible_providers,
+    ).ask_async()
+
+    match answer:
+        case "Git":
+            # ask for the location of the git repository
+            if storage_provider_name is None:
+                storage_provider_name = "git"
+
+            storage_provider = await build_git_storage_provider()
+            key_identifier = await build_git_key_identifier(
+                storage_provider_name,
+                path=default_key_path,
+                question=key_question,
+            )
+
+        case "Local":
+            if storage_provider_name is None:
+                storage_provider_name = "local"
+
+            storage_provider = await build_local_storage_provider(local_storage_default_path)
+            key_identifier = await build_local_key_identifier(
+                storage_provider_name,
+                path=default_key_path,
+                question=key_question,
+            )
+
+        case _:
+            raise ValueError("Invalid selection")
+
+    return storage_provider_name, storage_provider, key_identifier
+
+
+async def wizard(manager: DependenciesManager) -> ConfigFile:
+    # ask how to store the state
+    storage_provider_name, storage_provider, key_identifier = await create_storage_provider_and_key(
+        main_question="How do you want to store the terraform state?",
+        key_question="What is the location of the state file?",
+        default_key_path="terraform.tfstate",
+    )
+
+    result_file = ConfigFile(
+        version="1",
+        storage_providers={
+            storage_provider_name: storage_provider,
+        },
+        transformers=[],
+        state_manager=StateManagerConfig(
+            storage=key_identifier,
+        ),
+    )
+
+    # ask if the user wants to add encryption
+    should_add_encryption = await questionary.confirm(
+        "Do you want to add encryption to the state?",
+        default=True,
+    ).ask_async()
+    if should_add_encryption:
+        await add_encryption_transformer(storage_provider_name, result_file, manager)
+
+    return result_file
+
+
+async def _init() -> None:
+    manager = await initialize_manager()
+    config_file_location = pathlib.Path(CONFIG_FILE_NAME)
+    if config_file_location.exists():
+        print("Configuration file already exists")
+        should_replace = await questionary.confirm(
+            "Do you want to replace it?",
+            default=False,
+        ).ask_async()
+        if not should_replace:
+            print("Aborting...")
+            return
+
+        print("Replacing existing configuration file")
+
+    result_file = await wizard(manager)
+    raw_file = yaml.safe_dump(yaml.safe_load(result_file.model_dump_json()))
+    config_file_location.write_text(raw_file, encoding="utf-8")
+
+    print("\n\n")
+    print("Configuration file created")
+    print("You can now start the server with `tfstate-git start`")
+    print("In terraform backend configuration, use the following:\n")
+    print(READY_MESSAGE.format(port=8600))
+
+
 @app.command()
-def init(
-    force: Annotated[
-        bool, typer.Option("-f", help="force replacement on existing key")
-    ] = False,
-) -> None:
+def init() -> None:
     with capture_aborts():
-        asyncio.run(_init(force))
-
-
-@app.command()
-def export(
-    output: Annotated[Path, typer.Argument(..., help="Output file for the key")],
-) -> None:
-    with capture_aborts():
-        if not config.age_key_path.exists():
-            raise typer.Abort("age key not found. Please initialize it first.")
-
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(config.age_key_path.read_bytes())
-
-
-@app.command(name="import")
-def import_key(
-    file_path: Annotated[Path, typer.Argument(..., help="Input file for the key")],
-    force: Annotated[
-        bool, typer.Option("-f", help="force replacement on existing key")
-    ] = False,
-) -> None:
-    with capture_aborts():
-        if not file_path.exists():
-            raise typer.Abort("Input file not found")
-
-        config.age_key_path.parent.mkdir(parents=True, exist_ok=True)
-        config.age_key_path.write_bytes(file_path.read_bytes())
-
-        asyncio.run(_init(force))
+        asyncio.run(_init())
 
 
 @app.command()
@@ -177,6 +322,43 @@ def start(
     port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
 ) -> None:
     start_server(port)
+
+
+class UvicornServer(multiprocessing.Process):
+    def __init__(self, config: Config):
+        super().__init__()
+        self.server = Server(config=config)
+        self.config = config
+
+    def stop(self):
+        self.terminate()
+
+    def run(self, *args, **kwargs):
+        self.server.run()
+
+
+def wait_until_ready(port: int):
+    client = httpx.Client()
+    while True:
+        try:
+            response = client.get(f"http://localhost:{port}/ready")
+            response.raise_for_status()
+            break
+        except Exception:
+            time.sleep(0.2)
+
+
+@app.command()
+def wrap(
+    args: Annotated[list[str], typer.Argument(help="Command to run")],
+    port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
+) -> None:
+    instance = UvicornServer(config=Config(app=server_app, port=port))
+    instance.start()
+    wait_until_ready(port)
+    # run the command
+    subprocess.run(args)
+    instance.stop()
 
 
 def main() -> None:

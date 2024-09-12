@@ -23,9 +23,13 @@ class GitStorageProviderItemIdentifier(ItemKey):
 
 
 class GitStorageProviderInitConfig(BaseModel):
-    clone_path: pathlib.Path
+    origin_url: str
     ref: Optional[str] = "main"
-    origin_url: Optional[str] = None
+    clone_path: Optional[pathlib.Path] = None
+
+
+def directory_is_empty(directory: pathlib.Path) -> bool:
+    return not any(directory.iterdir())
 
 
 class GitStorageProvider(AbstractStorageProvider):
@@ -35,13 +39,42 @@ class GitStorageProvider(AbstractStorageProvider):
 
     def __init__(
         self,
+        origin_url: str,
         clone_path: pathlib.Path,
         ref: str = "main",
-        origin_url: Optional[str] = None,
     ) -> None:
         self.clone_path = clone_path.expanduser()
         self.origin_url = origin_url
         self.ref = ref
+
+        self._initialize()
+
+    def _initialize(self) -> None:
+        # create parent directories
+        self.clone_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if not self.clone_path.exists():
+            # clone the repository
+            self._git("clone", self.origin_url, str(self.clone_path), cwd=self.clone_path.parent)
+
+        self.validate()
+
+    # TODO: Add invoking for this method...
+    def validate(self) -> None:
+        # check that the path isn't dirty
+        if not self.clone_path.exists():
+            raise FileNotFoundError(f"Path {self.clone_path} does not exist")
+
+        if not self.clone_path.is_dir():
+            raise NotADirectoryError(f"Path {self.clone_path} is not a directory")
+
+        if not (self.clone_path / ".git").exists():
+            raise FileNotFoundError(f"Path {self.clone_path} is not a git repository")
+
+        if self._is_dirty():
+            raise RuntimeError(
+                f"Path {self.clone_path} is dirty - please commit or stash changes before using this provider"
+            )
 
     @override
     @classmethod
@@ -50,16 +83,21 @@ class GitStorageProvider(AbstractStorageProvider):
         raw_config: Any,
         *,
         manager: DependenciesManager,
+        workdir: pathlib.Path,
     ) -> Self:
         result = GitStorageProviderInitConfig.model_validate(raw_config)
+
+        repo_name = result.origin_url.split("/")[-1].replace(".git", "")
+        result.clone_path = result.clone_path or (workdir / "git_storage" / repo_name)
+
         return cls(
             **result.model_dump(),
         )
 
-    def _git(self, command: str, *args: str) -> str:
+    def _git(self, command: str, *args: str, cwd=None) -> str:
         proc = subprocess.run(
             ["git", command, *args],
-            cwd=self.clone_path,
+            cwd=cwd or self.clone_path,
             capture_output=True,
             text=True,
             check=False,
@@ -73,6 +111,9 @@ class GitStorageProvider(AbstractStorageProvider):
     def _cleanup_workspace(self) -> None:
         self._git("reset", "--hard")
         self._git("checkout", self.ref)
+
+    def _is_dirty(self) -> bool:
+        return bool(self._git("status", "--porcelain"))
 
     @override
     @classmethod
@@ -94,6 +135,11 @@ class GitStorageProvider(AbstractStorageProvider):
         except FileNotFoundError as exc:
             raise FileNotFoundError(f"File {file_name} not found in the repository") from exc
 
+    def commit_and_push_changes(self, message: str, ref=None) -> None:
+        self._git("add", ".")
+        self._git("commit", "-m", message)
+        self._git("push", "origin", ref or self.ref)
+
     @override
     def put_file(self, item_identifier: GitStorageProviderItemIdentifier, data: bytes) -> None:
         file_name = item_identifier.path
@@ -105,9 +151,7 @@ class GitStorageProvider(AbstractStorageProvider):
         state_file = self.clone_path / file_name
         state_file.write_bytes(data)
 
-        self._git("add", str(state_file))
-        self._git("commit", "-m", f"Update state - {file_name}")
-        self._git("push", "origin", self.ref)
+        self.commit_and_push_changes(f"Update state - {file_name}")
 
     @override
     def delete_file(self, item_identifier: GitStorageProviderItemIdentifier) -> None:
@@ -120,9 +164,7 @@ class GitStorageProvider(AbstractStorageProvider):
         state_file = self.clone_path / file_name
         state_file.unlink()
 
-        self._git("add", str(state_file))
-        self._git("commit", "-m", f"Delete state - {file_name}")
-        self._git("push", "origin", self.ref)
+        self.commit_and_push_changes(f"Delete state - {file_name}")
 
     @override
     def read_lock(self, item_identifier: GitStorageProviderItemIdentifier) -> bytes:

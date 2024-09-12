@@ -1,4 +1,5 @@
 import abc
+import pathlib
 from typing import Any, Self
 
 from tfstate_git.server.storage_provider_base import AbstractStorageProvider
@@ -17,6 +18,7 @@ class AbstractTransformation(abc.ABC):
         *,
         storage_providers: dict[str, AbstractStorageProvider],
         manager: DependenciesManager,
+        workdir: pathlib.Path,
     ) -> Self: ...
 
     @abc.abstractmethod

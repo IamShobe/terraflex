@@ -43,6 +43,7 @@ class EncryptionTransformation(AbstractTransformation):
         *,
         storage_providers: dict[str, AbstractStorageProvider],
         manager: DependenciesManager,
+        workdir: pathlib.Path,
     ) -> Self:
         config = EncryptionTransformerConfig.model_validate(raw_config)
         encryption_provider = encryption_providers.get(config.key_type)

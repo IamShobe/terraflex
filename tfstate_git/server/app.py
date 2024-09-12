@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Any, AsyncIterator
+from typing import Annotated, Any, AsyncIterator, Literal
 from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -45,12 +45,7 @@ backend "http" {{
 
 DEPENDENCIES_ENTRYPOINT = "tfformer.plugins.dependencies"
 
-
-config_file_location = Path.cwd() / "examples" / "tfformer.yaml"
-if config_file_location.exists():
-    content = config_file_location.read_bytes()
-    obj = yaml.safe_load(content)
-    file_config = ConfigFile.model_validate(obj)
+CONFIG_FILE_NAME = "tfformer.yaml"
 
 
 async def initialize_manager() -> DependenciesManager:
@@ -71,6 +66,7 @@ async def generate_transformers(
     config: ConfigFile,
     manager: DependenciesManager,
     storage_providers: dict[str, AbstractStorageProvider],
+    workdir: Path,
 ) -> list[AbstractTransformation]:
     transformer_providers = get_providers(
         AbstractTransformation,
@@ -88,6 +84,7 @@ async def generate_transformers(
                 transformer.model_extra or {},
                 storage_providers=storage_providers,
                 manager=manager,
+                workdir=workdir,
             )
         )
 
@@ -97,6 +94,7 @@ async def generate_transformers(
 async def create_storage_providers(
     config: ConfigFile,
     manager: DependenciesManager,
+    workdir: Path,
 ) -> dict[str, AbstractStorageProvider]:
     storage_providers = get_providers(
         AbstractStorageProvider,
@@ -112,16 +110,25 @@ async def create_storage_providers(
         result_storage_providers[name] = await storage_class.from_config(
             storage_config.model_extra or {},
             manager=manager,
+            workdir=workdir,
         )
 
     return result_storage_providers
 
 
 async def initialize_controller() -> StateLockProviderProtocol:
+    config_file_location = Path.cwd() / CONFIG_FILE_NAME
+    if not config_file_location.exists():
+        raise FileNotFoundError(f"Config file not found: {config_file_location}")
+
+    content = config_file_location.read_bytes()
+    obj = yaml.safe_load(content)
+    file_config = ConfigFile.model_validate(obj)
+
     manager = await initialize_manager()
 
-    storage_providers = await create_storage_providers(file_config, manager)
-    transformers = await generate_transformers(file_config, manager, storage_providers)
+    storage_providers = await create_storage_providers(file_config, manager, workdir=config.state_dir)
+    transformers = await generate_transformers(file_config, manager, storage_providers, workdir=config.state_dir)
     state_manager_storage = file_config.state_manager.storage
     state_storage_provider = storage_providers.get(state_manager_storage.provider)
     if state_storage_provider is None:
@@ -198,6 +205,11 @@ def lock_state(body: LockBody, controller: ControllerDependency) -> None:
 @app.delete("/lock")
 def unlock_state(controller: ControllerDependency) -> None:
     return controller.unlock()
+
+
+@app.get("/ready")
+def ready() -> Literal["Ready"]:
+    return "Ready"
 
 
 def start_server(port: int) -> None:

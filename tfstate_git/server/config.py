@@ -50,5 +50,3 @@ class Settings(BaseSettings):
             default=xdg_base_dirs.xdg_data_home() / PACKAGE_NAME,
         ),
     ]
-
-    metadata_dir: Annotated[pathlib.Path, Field(default=pathlib.Path(".tfstate_git"))]

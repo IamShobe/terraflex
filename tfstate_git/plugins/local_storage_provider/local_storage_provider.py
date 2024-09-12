@@ -33,6 +33,7 @@ class LocalStorageProvider(AbstractStorageProvider):
         raw_config: Any,
         *,
         manager: DependenciesManager,
+        workdir: pathlib.Path,
     ) -> Self:
         result = LocalStorageProviderInitConfig.model_validate(raw_config)
         return cls(

@@ -1,5 +1,6 @@
 import abc
 from contextlib import contextmanager
+import pathlib
 from typing import Any, Iterator, Self
 
 from pydantic import BaseModel
@@ -23,6 +24,7 @@ class AbstractStorageProvider(abc.ABC):
         raw_config: Any,
         *,
         manager: DependenciesManager,
+        workdir: pathlib.Path,
     ) -> Self: ...
 
     @classmethod
