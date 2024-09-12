@@ -1,6 +1,9 @@
 # terraflex
 Construct custom backends for your terraform project!
 
+> ![NOTE]  
+> This project is still WIP in early stages - there might be some bugs - you are welcome to open issues when any encounted
+
 #### why?
 I started this project to provide a solution for free **homelabs** IAC.  
 The major constraint here is to find a **free** backend that I feel **safe** to use.  
