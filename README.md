@@ -9,7 +9,7 @@ I started this project to provide a solution for free **homelabs** IAC.
 The major constraint here is to find a **free** backend that I feel **safe** to use.  
 I found several solutions around this - but most were using a 3rd party hosted [http](https://developer.hashicorp.com/terraform/language/backend/http) backend servers.  
 Those backends were problematic for me because I had issues trusting them to store my sensitive state files - and the fact that I didn't own the storage location - made me afraid that I might lose those state files - and we all know how bad it is to lose your state files :P.  
-The closest solution I found was [terraform-backend-git](https://github.com/plumber-cd/terraform-backend-git) - which this solution was heavily influenced on.  
+The closest solution I found was [terraform-backend-git](https://github.com/plumber-cd/terraform-backend-git) - which this project was heavily influenced on - so go check it out as well!  
 Eventually I had the idea of creating an **extendable modular terraform http backend** - which allows customizing the state using `transformations` (like encryption), and getting starting with it will be as simple as running single command.
 
 ## Installation
