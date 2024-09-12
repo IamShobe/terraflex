@@ -11,7 +11,7 @@ from pydantic_settings import (
 )
 import xdg_base_dirs
 
-PACKAGE_NAME = "tfstate-git"
+PACKAGE_NAME = "terraflex"
 
 
 StorageParams: TypeAlias = dict

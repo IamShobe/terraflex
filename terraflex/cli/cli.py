@@ -301,7 +301,7 @@ async def _init() -> None:
 
     print("\n\n")
     print("Configuration file created")
-    print("You can now start the server with `tfstate-git start`")
+    print("You can now start the server with `terraflex start`")
     print("In terraform backend configuration, use the following:\n")
     print(READY_MESSAGE.format(port=8600))
 

@@ -3,9 +3,12 @@ version: "1"
 storage_providers:
   git:
     type: git
-    # origin_url: git@github.com:IamShobe/tf-state.git
-    clone_path: ~/git/tf-state
+    origin_url: git@github.com:IamShobe/tf-state.git
+    # clone_path: ~/git/tf-state
+    # TODO: unsupported
+    # ref: main
   
+  # TODO: Planned
   # onepassword:
   #   type: onepassword
   
@@ -21,6 +24,7 @@ transformers:
       params:
         path: age_key.txt
 
+  # TODO: Planned
   # - type: encryption
   #   key_type: age
   #   import_from:
