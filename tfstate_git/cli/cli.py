@@ -135,12 +135,12 @@ async def add_encryption_transformer(
 
             if selected_storage_provider == "create":
                 provider_name, storage_provider, key_identifier = await create_storage_provider_and_key(
+                    possible_providers=["Local"],
                     main_question="How do you want to store the secret?",
                     key_question="What is the location of the secret key?",
                     default_key_path="age-key.txt",
                     storage_provider_name="encryption",
                     local_storage_default_path="~/secrets/",
-                    possible_providers=["Local"],
                 )
 
                 config_file.storage_providers[provider_name] = storage_provider
@@ -206,19 +206,13 @@ async def add_encryption_transformer(
 
 
 async def create_storage_provider_and_key(
+    possible_providers,
     main_question: str,
     key_question: str,
     default_key_path: str,
     storage_provider_name: Optional[str] = None,
     local_storage_default_path: Optional[str] = None,
-    possible_providers=None,
 ):
-    if possible_providers is None:
-        possible_providers = [
-            "Git",
-            "Local",
-        ]
-
     # ask how to store the state
     answer = await questionary.select(
         main_question,
@@ -258,6 +252,7 @@ async def create_storage_provider_and_key(
 async def wizard(manager: DependenciesManager) -> ConfigFile:
     # ask how to store the state
     storage_provider_name, storage_provider, key_identifier = await create_storage_provider_and_key(
+        possible_providers=["Git", "Local"],
         main_question="How do you want to store the terraform state?",
         key_question="What is the location of the state file?",
         default_key_path="terraform.tfstate",
