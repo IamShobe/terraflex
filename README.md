@@ -65,3 +65,4 @@ pipx upgrade terraflex
 - [ ] allow for multiple state files
 - [ ] git - have a support for different branches
 - [ ] onepassword store for encryption key
+- [ ] bundle standalone binary using PyInstaller
