@@ -1,7 +1,7 @@
 # terraflex
 Construct custom backends for your terraform project!
 
-> ![NOTE]  
+> [!NOTE]  
 > This project is still WIP in early stages - there might be some bugs - you are welcome to open issues when any encounted
 
 #### why?
@@ -56,7 +56,7 @@ pipx upgrade terraflex
   ```
 ![terraflex init](./docs/terraflex_init.png)
 
-> ![WARN]  
+> [!WARNING]  
 > Make sure to not lose your encryption key - back it up!
 > If you lose this key you wont be able to reopen the terraform state at all!
 
