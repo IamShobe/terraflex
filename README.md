@@ -51,7 +51,11 @@ pipx upgrade terraflex
   ```bash
   terraflex wrap -- $SHELL
   ```
+![terraflex init](./docs/terraflex_init.png)
 
+> ![WARN]  
+> Make sure to not lose your encryption key - back it up!
+> If you lose this key you wont be able to reopen the terraform state at all!
 
 ## TODO
 
