@@ -14,20 +14,27 @@ import questionary
 from terraflex.cli.builders.wizard import start_configfile_creation_wizard
 from terraflex.server.app import (
     CONFIG_FILE_NAME,
+    create_storage_providers,
     initialize_manager,
     start_server,
     app as server_app,
+    config as server_config,
 )
+from terraflex.server.storage_provider_base import LockableStorageProviderProtocol
 
 
 READY_MESSAGE = """\
 backend "http" {{
     address = "http://localhost:{port}/{stack_name}/state"
+{lock_info}
+}}
+"""
+
+LOCK_INFO = """\
     lock_address = "http://localhost:{port}/{stack_name}/lock"
     lock_method = "PUT"
     unlock_address = "http://localhost:{port}/{stack_name}/lock"
     unlock_method = "DELETE"
-}}
 """
 
 
@@ -44,6 +51,7 @@ def capture_aborts() -> Iterator[None]:
 
 
 async def _init() -> None:
+    port = 8600
     manager = await initialize_manager()
     config_file_location = pathlib.Path(CONFIG_FILE_NAME)
     if config_file_location.exists():
@@ -62,11 +70,23 @@ async def _init() -> None:
     raw_file = yaml.safe_dump(yaml.safe_load(result_file.model_dump_json()))
     config_file_location.write_text(raw_file, encoding="utf-8")
 
+    storage_providers = await create_storage_providers(
+        result_file,
+        manager,
+        workdir=server_config.state_dir,
+    )
+
     print("\n\n")
     print("Configuration file created")
     print("You can now start the server with `terraflex start`")
     print("In terraform backend configuration, use the following:\n")
-    print(READY_MESSAGE.format(port=8600, stack_name=stack_name))
+    storage_provider_name = result_file.stacks[stack_name].state_storage.provider
+
+    lock_info = ""
+    if isinstance(storage_providers[storage_provider_name], LockableStorageProviderProtocol):
+        lock_info = LOCK_INFO.format(port=port, stack_name=stack_name)
+
+    print(READY_MESSAGE.format(port=port, stack_name=stack_name, lock_info=lock_info))
 
 
 @app.command()
