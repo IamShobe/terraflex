@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "terraflex"
-version = "0.2.0"
+version = "0.2.1"
 description = ""
 authors = ["Elran Shefer"]
 readme = "README.md"
@@ -19,6 +19,7 @@ requests = "^2.32.3"
 
 rich = "^13.8.1"
 questionary = "^2.0.1"
+semver = "^3.0.2"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.6.3"
 pytest = "^8.3.2"

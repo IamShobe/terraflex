@@ -4,12 +4,12 @@ from typing import (
     Optional,
     TypeAlias,
 )
-from packaging.version import Version
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import (
     BaseSettings,
 )
+import semver
 import xdg_base_dirs
 
 PACKAGE_NAME = "terraflex"
@@ -49,8 +49,8 @@ class ConfigFile(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, value: str) -> str:
-        current_version = Version(value)
-        config_version = Version(CONFIG_VERSION)
+        current_version = semver.Version.parse(value, optional_minor_and_patch=True)
+        config_version = semver.Version.parse(CONFIG_VERSION, optional_minor_and_patch=True)
         if current_version < config_version:
             raise ValueError(
                 f"Unsupported version ({current_version} < {config_version}) - please upgrade the config file"
