@@ -19,7 +19,7 @@
       "module": "terraflex",
       "args": ["start"],
       "cwd": "${workspaceFolder}/../iac",
-      "jinja": true
+      "justMyCode": false
     }
   ]
 }

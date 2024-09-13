@@ -14,11 +14,21 @@ import questionary
 from terraflex.cli.builders.wizard import start_configfile_creation_wizard
 from terraflex.server.app import (
     CONFIG_FILE_NAME,
-    READY_MESSAGE,
     initialize_manager,
     start_server,
     app as server_app,
 )
+
+
+READY_MESSAGE = """\
+backend "http" {{
+    address = "http://localhost:{port}/{stack_name}/state"
+    lock_address = "http://localhost:{port}/{stack_name}/lock"
+    lock_method = "PUT"
+    unlock_address = "http://localhost:{port}/{stack_name}/lock"
+    unlock_method = "DELETE"
+}}
+"""
 
 
 app = typer.Typer(pretty_exceptions_enable=False)
@@ -48,7 +58,7 @@ async def _init() -> None:
 
         print("Replacing existing configuration file")
 
-    result_file = await start_configfile_creation_wizard(manager)
+    stack_name, result_file = await start_configfile_creation_wizard(manager)
     raw_file = yaml.safe_dump(yaml.safe_load(result_file.model_dump_json()))
     config_file_location.write_text(raw_file, encoding="utf-8")
 
@@ -56,7 +66,7 @@ async def _init() -> None:
     print("Configuration file created")
     print("You can now start the server with `terraflex start`")
     print("In terraform backend configuration, use the following:\n")
-    print(READY_MESSAGE.format(port=8600))
+    print(READY_MESSAGE.format(port=8600, stack_name=stack_name))
 
 
 @app.command()

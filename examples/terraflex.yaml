@@ -1,4 +1,4 @@
-version: "1"
+version: "2"
 
 storage_providers:
   git:
@@ -19,7 +19,8 @@ storage_providers:
     file_mode: 0600
 
 transformers:
-  - type: encryption
+  encryption:
+    type: encryption
     key_type: age
     import_from_storage:
       provider: local
@@ -36,8 +37,18 @@ transformers:
   #       item_id: b123456
   #       field_name: private_key
 
-state_manager:
-  storage:
-    provider: git
-    params:
-      path: terraform.tfstate
+stacks:
+  my-stack:
+    transformers:
+      - encryption
+    state_storage:
+      provider: git
+      params:
+        path: terraform.tfstate
+  my-stack2:
+    transformers:
+      - encryption
+    state_storage:
+      provider: git
+      params:
+        path: terraform2.tfstate

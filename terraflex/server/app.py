@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any, AsyncIterator, Literal
-from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status, Path as PathDep
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -19,6 +19,7 @@ from terraflex.server.storage_provider_base import (
     StorageProviderProtocol,
 )
 from terraflex.server.tf_state_lock_controller import (
+    TFStack,
     TFStateLockController,
 )
 from terraflex.server.transformation_base import (
@@ -30,17 +31,6 @@ from terraflex.utils.dependency_manager import DependenciesManager
 from terraflex.utils.plugins import get_providers, get_providers_instances
 
 config = Settings()  # type: ignore
-
-
-READY_MESSAGE = """\
-backend "http" {{
-    address = "http://localhost:{port}/state"
-    lock_address = "http://localhost:{port}/lock"
-    lock_method = "PUT"
-    unlock_address = "http://localhost:{port}/lock"
-    unlock_method = "DELETE"
-}}
-"""
 
 
 DEPENDENCIES_ENTRYPOINT = "terraflex.plugins.dependencies"
@@ -67,25 +57,23 @@ async def generate_transformers(
     manager: DependenciesManager,
     storage_providers: dict[str, StorageProviderProtocol],
     workdir: Path,
-) -> list[TransformerProtocol]:
+) -> dict[str, TransformerProtocol]:
     transformer_providers = get_providers(
         TransformerProtocol,
         TRANSFORMERS_ENTRYPOINT,
     )
 
-    transformers = []
-    for transformer in config.transformers:
+    transformers: dict[str, TransformerProtocol] = {}
+    for name, transformer in config.transformers.items():
         if transformer.type not in transformer_providers:
             raise ValueError(f"Unsupported transformer type: {transformer.type}")
 
         transformer_class = transformer_providers[transformer.type].model_class
-        transformers.append(
-            await transformer_class.from_config(
-                transformer.model_extra or {},
-                storage_providers=storage_providers,
-                manager=manager,
-                workdir=workdir,
-            )
+        transformers[name] = await transformer_class.from_config(
+            transformer.model_extra or {},
+            storage_providers=storage_providers,
+            manager=manager,
+            workdir=workdir,
         )
 
     return transformers
@@ -116,6 +104,37 @@ async def create_storage_providers(
     return result_storage_providers
 
 
+async def generate_stacks(
+    config: ConfigFile,
+    storage_providers: dict[str, StorageProviderProtocol],
+    transformers: dict[str, TransformerProtocol],
+) -> dict[str, TFStack]:
+    result: dict[str, TFStack] = {}
+
+    for stack_name, stack in config.stacks.items():
+        state_storage_provider = storage_providers.get(stack.state_storage.provider)
+        if state_storage_provider is None:
+            raise ValueError(f"Undeclared storage provider: {stack.state_storage.provider}")
+
+        stack_transformers: list[TransformerProtocol] = []
+        for transformer_name in stack.transformers:
+            transformer = transformers.get(transformer_name)
+            if transformer is None:
+                raise ValueError(f"Undeclared transformer: {transformer_name}")
+
+            stack_transformers.append(transformer)
+
+        state_key = state_storage_provider.validate_key(stack.state_storage.params or {})
+        result[stack_name] = TFStack(
+            name=stack_name,
+            storage_driver=state_storage_provider,
+            data_transformers=stack_transformers,
+            state_file_storage_identifier=state_key,
+        )
+
+    return result
+
+
 async def initialize_controller() -> StateLockProviderProtocol:
     config_file_location = Path.cwd() / CONFIG_FILE_NAME
     if not config_file_location.exists():
@@ -129,17 +148,9 @@ async def initialize_controller() -> StateLockProviderProtocol:
 
     storage_providers = await create_storage_providers(file_config, manager, workdir=config.state_dir)
     transformers = await generate_transformers(file_config, manager, storage_providers, workdir=config.state_dir)
-    state_manager_storage = file_config.state_manager.storage
-    state_storage_provider = storage_providers.get(state_manager_storage.provider)
-    if state_storage_provider is None:
-        raise ValueError(f"Undeclared storage provider: {state_manager_storage.provider}")
+    stacks = await generate_stacks(file_config, storage_providers, transformers)
 
-    state_key = state_storage_provider.validate_key(state_manager_storage.params or {})
-    return TFStateLockController(
-        storage_driver=state_storage_provider,
-        data_transformers=transformers,
-        state_file_storage_identifier=state_key,
-    )
+    return TFStateLockController(stacks=stacks)
 
 
 state = {}
@@ -168,43 +179,44 @@ async def validation_exception_handler(_: Request, exc: LockingError) -> JSONRes
     )
 
 
-@app.get("/state")
-async def get_state(controller: ControllerDependency) -> Data:
+@app.get("/{stack_name}/state")
+async def get_state(stack_name: str, controller: ControllerDependency) -> Data:
     # read the state file
-    existing_state = await controller.get()
+    existing_state = await controller.get(stack_name)
     if existing_state is None:
         raise HTTPException(status_code=404, detail="State not found")
 
     return existing_state
 
 
-@app.post("/state")
+@app.post("/{stack_name}/state")
 async def update_state(
+    stack_name: str,
     lock_id: Annotated[str, Query(..., alias="ID", description="ID of the state to update")],
     new_state: Annotated[Any, Body(..., description="New state")],
     controller: ControllerDependency,
 ) -> None:
-    return await controller.put(lock_id, new_state)
+    return await controller.put(stack_name, lock_id, new_state)
 
 
-@app.delete("/state")
-async def delete_state(controller: ControllerDependency) -> None:
+@app.delete("/{stack_name}/state")
+async def delete_state(stack_name: str, controller: ControllerDependency) -> None:
     # TODO: should check if current user is holding the lock?
-    lock = await controller.read_lock()
+    lock = await controller.read_lock(stack_name)
     if lock is None:
         raise HTTPException(status_code=404, detail="State not found")
 
-    return await controller.delete(lock.ID)
+    return await controller.delete(stack_name, lock.ID)
 
 
-@app.put("/lock")
-def lock_state(body: LockBody, controller: ControllerDependency) -> None:
-    return controller.lock(body)
+@app.put("/{stack_name}/lock")
+def lock_state(stack_name: Annotated[str, PathDep()], body: LockBody, controller: ControllerDependency) -> None:
+    return controller.lock(stack_name, body)
 
 
-@app.delete("/lock")
-def unlock_state(controller: ControllerDependency) -> None:
-    return controller.unlock()
+@app.delete("/{stack_name}/lock")
+def unlock_state(stack_name: str, controller: ControllerDependency) -> None:
+    return controller.unlock(stack_name)
 
 
 @app.get("/ready")
@@ -213,8 +225,6 @@ def ready() -> Literal["Ready"]:
 
 
 def start_server(port: int) -> None:
-    print("Add the following to your terraform configuration:")
-    print(READY_MESSAGE.format(port=port))
     uvicorn.run(app, port=port)
 
 

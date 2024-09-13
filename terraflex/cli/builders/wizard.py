@@ -4,13 +4,21 @@ from terraflex.cli.builders.encryption_transformer import add_encryption_transfo
 from terraflex.cli.builders.storage_provider import create_storage_provider_and_key
 from terraflex.server.config import (
     ConfigFile,
-    StateManagerConfig,
+    StackConfig,
 )
 
 from terraflex.utils.dependency_manager import DependenciesManager
 
 
-async def start_configfile_creation_wizard(manager: DependenciesManager) -> ConfigFile:
+async def start_configfile_creation_wizard(manager: DependenciesManager) -> tuple[str, ConfigFile]:
+    # ask for the name of the stack
+    stack_name = await questionary.text(
+        "What is the name of the stack?",
+        default="main",
+    ).ask_async()
+    if not stack_name:
+        raise ValueError("Invalid stack name")
+
     # ask how to store the state
     storage_provider_name, storage_provider, key_identifier = await create_storage_provider_and_key(
         possible_providers=["Git", "Local"],
@@ -19,15 +27,20 @@ async def start_configfile_creation_wizard(manager: DependenciesManager) -> Conf
         default_key_path="terraform.tfstate",
     )
 
+    stack_config = StackConfig(
+        state_storage=key_identifier,
+        transformers=[],
+    )
+
     result_file = ConfigFile(
-        version="1",
+        version="2",
         storage_providers={
             storage_provider_name: storage_provider,
         },
-        transformers=[],
-        state_manager=StateManagerConfig(
-            storage=key_identifier,
-        ),
+        transformers={},
+        stacks={
+            stack_name: stack_config,
+        },
     )
 
     # ask if the user wants to add encryption
@@ -36,6 +49,8 @@ async def start_configfile_creation_wizard(manager: DependenciesManager) -> Conf
         default=True,
     ).ask_async()
     if should_add_encryption:
-        await add_encryption_transformer(storage_provider_name, result_file, manager)
+        encryption_name = await add_encryption_transformer(storage_provider_name, result_file, manager)
+        if encryption_name is not None:
+            stack_config.transformers.append(encryption_name)
 
-    return result_file
+    return stack_name, result_file
