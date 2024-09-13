@@ -17,6 +17,7 @@ from terraflex.server.base_state_lock_provider import (
 from terraflex.server.storage_provider_base import (
     STORATE_PROVIDERS_ENTRYPOINT,
     StorageProviderProtocol,
+    WriteableStorageProviderProtocol,
 )
 from terraflex.server.tf_state_lock_controller import (
     TFStack,
@@ -125,6 +126,11 @@ async def generate_stacks(
             stack_transformers.append(transformer)
 
         state_key = state_storage_provider.validate_key(stack.state_storage.params or {})
+        if not isinstance(state_storage_provider, WriteableStorageProviderProtocol):
+            raise ValueError(
+                f"Storage provider {stack.state_storage.provider} does not support writing - and it's required for state management"
+            )
+
         result[stack_name] = TFStack(
             name=stack_name,
             storage_driver=state_storage_provider,

@@ -10,7 +10,6 @@ from terraflex.server.base_state_lock_provider import (
 )
 from terraflex.server.storage_provider_base import (
     LockableStorageProviderProtocol,
-    StorageProviderProtocol,
     ItemKey,
     WriteableStorageProviderProtocol,
 )
@@ -23,7 +22,7 @@ from terraflex.server.transformation_base import (
 class TFStack:
     name: str
     data_transformers: Iterable[TransformerProtocol]
-    storage_driver: StorageProviderProtocol
+    storage_driver: WriteableStorageProviderProtocol
     state_file_storage_identifier: ItemKey
 
 
@@ -59,9 +58,6 @@ class TFStateLockController(StateLockProviderProtocol):
 
     async def put(self, stack_name: str, lock_id: str, value: Data) -> None:
         stack = self._validate_stack(stack_name)
-        if not isinstance(stack.storage_driver, WriteableStorageProviderProtocol):
-            raise NotImplementedError("This storage provider does not support writing")
-
         await self._check_lock(stack_name, lock_id)
         # lock is locked by me
 
@@ -73,9 +69,6 @@ class TFStateLockController(StateLockProviderProtocol):
 
     async def delete(self, stack_name: str, lock_id: str) -> None:
         stack = self._validate_stack(stack_name)
-        if not isinstance(stack.storage_driver, WriteableStorageProviderProtocol):
-            raise NotImplementedError("This storage provider does not support writing")
-
         await self._check_lock(stack_name, lock_id)
         # lock is locked by me
 
