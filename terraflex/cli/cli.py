@@ -20,14 +20,18 @@ from terraflex.server.app import (
     app as server_app,
     config as server_config,
 )
+from terraflex.server.config import ConfigFile
 from terraflex.server.storage_provider_base import LockableStorageProviderProtocol
 
 
 READY_MESSAGE = """\
 backend "http" {{
-    address = "http://localhost:{port}/{stack_name}/state"
-{lock_info}
+{content}
 }}
+"""
+
+ADDRESS_INFO = """\
+    address = "http://localhost:{port}/{stack_name}/state"
 """
 
 LOCK_INFO = """\
@@ -70,23 +74,11 @@ async def _init() -> None:
     raw_file = yaml.safe_dump(yaml.safe_load(result_file.model_dump_json()))
     config_file_location.write_text(raw_file, encoding="utf-8")
 
-    storage_providers = await create_storage_providers(
-        result_file,
-        manager,
-        workdir=server_config.state_dir,
-    )
-
     print("\n\n")
     print("Configuration file created")
     print("You can now start the server with `terraflex start`")
-    print("In terraform backend configuration, use the following:\n")
-    storage_provider_name = result_file.stacks[stack_name].state_storage.provider
 
-    lock_info = ""
-    if isinstance(storage_providers[storage_provider_name], LockableStorageProviderProtocol):
-        lock_info = LOCK_INFO.format(port=port, stack_name=stack_name)
-
-    print(READY_MESSAGE.format(port=port, stack_name=stack_name, lock_info=lock_info))
+    await print_binding_message(stack_name, port)
 
 
 @app.command()
@@ -100,6 +92,41 @@ def start(
     port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
 ) -> None:
     start_server(port)
+
+
+async def print_binding_message(stack_name: str, port: int) -> None:
+    manager = await initialize_manager()
+    config_file = pathlib.Path(CONFIG_FILE_NAME)
+    if not config_file.exists():
+        raise FileNotFoundError(f"Config file not found: {config_file}")
+
+    content = config_file.read_text(encoding="utf-8")
+    config_dict = yaml.safe_load(content)
+    config = ConfigFile.model_validate(config_dict)
+
+    if stack_name not in config.stacks:
+        raise ValueError(f"Stack not found: {stack_name}")
+
+    storage_provider_name = config.stacks[stack_name].state_storage.provider
+    storage_providers = await create_storage_providers(config, manager=manager, workdir=server_config.state_dir)
+    content_parts = [
+        ADDRESS_INFO.format(port=port, stack_name=stack_name).rstrip(),
+    ]
+
+    if isinstance(storage_providers[storage_provider_name], LockableStorageProviderProtocol):
+        content_parts.append(LOCK_INFO.format(port=port, stack_name=stack_name).rstrip())
+
+    print("In terraform backend configuration, use the following:\n")
+    print(READY_MESSAGE.format(content="\n".join(content_parts)))
+
+
+@app.command()
+def print_bindings(
+    stack_name: Annotated[str, typer.Argument(help="Name of the stack")],
+    port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
+) -> None:
+    with capture_aborts():
+        asyncio.run(print_binding_message(stack_name, port))
 
 
 class UvicornServer(multiprocessing.Process):
