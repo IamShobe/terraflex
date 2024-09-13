@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import json
-from typing import Iterable
 
 from terraflex.server.base_state_lock_provider import (
     StateLockProviderProtocol,
@@ -21,7 +20,7 @@ from terraflex.server.transformation_base import (
 @dataclass
 class TFStack:
     name: str
-    data_transformers: Iterable[TransformerProtocol]
+    data_transformers: list[TransformerProtocol]
     storage_driver: WriteableStorageProviderProtocol
     state_file_storage_identifier: ItemKey
 
@@ -49,7 +48,7 @@ class TFStateLockController(StateLockProviderProtocol):
             return None
 
         content = data
-        for transformer in stack.data_transformers:
+        for transformer in reversed(stack.data_transformers):
             content = await transformer.transform_read_file_content(
                 stack.state_file_storage_identifier.as_string(), content
             )
