@@ -20,11 +20,19 @@ class LocalStorageProviderItemIdentifier(ItemKey):
 
 class LocalStorageProviderInitConfig(BaseModel):
     folder: pathlib.Path
+    folder_mode: int = 0o700
+    file_mode: int = 0o600
 
 
 class LocalStorageProvider(AbstractStorageProvider):
-    def __init__(self, folder: pathlib.Path) -> None:
+    def __init__(self, folder: pathlib.Path, folder_mode: int, file_mode: int) -> None:
         self.folder = folder.expanduser()
+        self.folder_mode = folder_mode
+        self.file_mode = file_mode
+
+        if not self.folder.exists():
+            self.folder.mkdir(parents=True, exist_ok=True)
+            self.folder.chmod(self.folder_mode)
 
     @override
     @classmethod
@@ -62,6 +70,7 @@ class LocalStorageProvider(AbstractStorageProvider):
         # save state
         state_file = self.folder / file_name
         state_file.write_bytes(data)
+        state_file.chmod(self.file_mode)
 
     @override
     def delete_file(self, item_identifier: LocalStorageProviderItemIdentifier) -> None:
