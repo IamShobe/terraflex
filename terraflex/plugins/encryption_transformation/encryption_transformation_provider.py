@@ -4,10 +4,10 @@ from typing import Any, Optional, Self, override
 
 from pydantic import BaseModel, ConfigDict
 
-from terraflex.plugins.encryption_transformation.encryption_base import AbstractEncryption
-from terraflex.server.storage_provider_base import AbstractStorageProvider
+from terraflex.plugins.encryption_transformation.encryption_base import EncryptionProtocol
+from terraflex.server.storage_provider_base import StorageProviderProtocol
 from terraflex.server.transformation_base import (
-    AbstractTransformation,
+    TransformerProtocol,
 )
 from terraflex.utils.dependency_manager import DependenciesManager
 from terraflex.utils.plugins import get_providers
@@ -26,13 +26,13 @@ class EncryptionTransformerConfig(BaseModel):
     key_type: str
 
 
-encryption_providers = get_providers(AbstractEncryption, ENCRYPTION_PROVIDER_ENTRYPOINT)
+encryption_providers = get_providers(EncryptionProtocol, ENCRYPTION_PROVIDER_ENTRYPOINT)
 
 
-class EncryptionTransformation(AbstractTransformation):
+class EncryptionTransformation(TransformerProtocol):
     TYPE = "encryption"
 
-    def __init__(self, encryption_provider: AbstractEncryption):
+    def __init__(self, encryption_provider: EncryptionProtocol):
         self.encryption_provider = encryption_provider
 
     @override
@@ -41,7 +41,7 @@ class EncryptionTransformation(AbstractTransformation):
         cls,
         raw_config: Any,
         *,
-        storage_providers: dict[str, AbstractStorageProvider],
+        storage_providers: dict[str, StorageProviderProtocol],
         manager: DependenciesManager,
         workdir: pathlib.Path,
     ) -> Self:

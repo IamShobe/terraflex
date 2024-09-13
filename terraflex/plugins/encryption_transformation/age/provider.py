@@ -4,9 +4,9 @@ from pydantic import BaseModel
 
 from terraflex.plugins.encryption_transformation.age.controller import AgeController, AgeKeygenController
 from terraflex.plugins.encryption_transformation.age.downloader import AgeDownloader
-from terraflex.plugins.encryption_transformation.encryption_base import AbstractEncryption
+from terraflex.plugins.encryption_transformation.encryption_base import EncryptionProtocol
 from terraflex.server.config import StorageProviderUsageConfig
-from terraflex.server.storage_provider_base import AbstractStorageProvider
+from terraflex.server.storage_provider_base import StorageProviderProtocol
 from terraflex.utils.dependency_downloader import DependencyDownloader
 from terraflex.utils.dependency_manager import DependenciesManager
 
@@ -22,7 +22,7 @@ AgeDependency = DependencyDownloader(
 )
 
 
-class AgeEncryptionProvider(AbstractEncryption):
+class AgeEncryptionProvider(EncryptionProtocol):
     TYPE = "age"
 
     def __init__(
@@ -36,7 +36,7 @@ class AgeEncryptionProvider(AbstractEncryption):
         cls,
         raw_config: Any,
         *,
-        storage_providers: dict[str, AbstractStorageProvider],
+        storage_providers: dict[str, StorageProviderProtocol],
         manager: DependenciesManager,
     ) -> Self:
         config = AgeKeyConfig.model_validate(raw_config)

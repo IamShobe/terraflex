@@ -16,14 +16,14 @@ from terraflex.server.base_state_lock_provider import (
 )
 from terraflex.server.storage_provider_base import (
     STORATE_PROVIDERS_ENTRYPOINT,
-    AbstractStorageProvider,
+    StorageProviderProtocol,
 )
 from terraflex.server.tf_state_lock_controller import (
     TFStateLockController,
 )
 from terraflex.server.transformation_base import (
     TRANSFORMERS_ENTRYPOINT,
-    AbstractTransformation,
+    TransformerProtocol,
 )
 from terraflex.utils.dependency_downloader import DependencyDownloader
 from terraflex.utils.dependency_manager import DependenciesManager
@@ -65,11 +65,11 @@ async def initialize_manager() -> DependenciesManager:
 async def generate_transformers(
     config: ConfigFile,
     manager: DependenciesManager,
-    storage_providers: dict[str, AbstractStorageProvider],
+    storage_providers: dict[str, StorageProviderProtocol],
     workdir: Path,
-) -> list[AbstractTransformation]:
+) -> list[TransformerProtocol]:
     transformer_providers = get_providers(
-        AbstractTransformation,
+        TransformerProtocol,
         TRANSFORMERS_ENTRYPOINT,
     )
 
@@ -95,9 +95,9 @@ async def create_storage_providers(
     config: ConfigFile,
     manager: DependenciesManager,
     workdir: Path,
-) -> dict[str, AbstractStorageProvider]:
+) -> dict[str, StorageProviderProtocol]:
     storage_providers = get_providers(
-        AbstractStorageProvider,
+        StorageProviderProtocol,
         STORATE_PROVIDERS_ENTRYPOINT,
     )
 

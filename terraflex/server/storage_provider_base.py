@@ -1,7 +1,6 @@
-import abc
 from contextlib import contextmanager
 import pathlib
-from typing import Any, Iterator, Self
+from typing import Any, Iterator, Protocol, Self, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -16,9 +15,9 @@ class ItemKey(BaseModel):
         raise NotImplementedError("as_string method must be implemented in subclasses")
 
 
-class AbstractStorageProvider(abc.ABC):
+@runtime_checkable
+class StorageProviderProtocol(Protocol):
     @classmethod
-    @abc.abstractmethod
     async def from_config(
         cls,
         raw_config: Any,
@@ -28,25 +27,23 @@ class AbstractStorageProvider(abc.ABC):
     ) -> Self: ...
 
     @classmethod
-    @abc.abstractmethod
     def validate_key(cls, key: dict) -> ItemKey: ...
-
-    @abc.abstractmethod
+    # read related
     def get_file(self, item_identifier: ItemKey) -> bytes: ...
 
-    @abc.abstractmethod
-    def put_file(self, item_identifier: ItemKey, data: bytes) -> None: ...
 
-    @abc.abstractmethod
+@runtime_checkable
+class WriteableStorageProviderProtocol(StorageProviderProtocol, Protocol):
+    # write related
+    def put_file(self, item_identifier: ItemKey, data: bytes) -> None: ...
     def delete_file(self, item_identifier: ItemKey) -> None: ...
 
-    @abc.abstractmethod
+
+@runtime_checkable
+class LockableStorageProviderProtocol(WriteableStorageProviderProtocol, Protocol):
+    # lock related
     def read_lock(self, item_identifier: ItemKey) -> bytes: ...
-
-    @abc.abstractmethod
     def acquire_lock(self, item_identifier: ItemKey, data: LockBody) -> None: ...
-
-    @abc.abstractmethod
     def release_lock(self, item_identifier: ItemKey) -> None: ...
 
 

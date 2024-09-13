@@ -1,24 +1,20 @@
-import abc
-from typing import Any, Self
+from typing import Any, Protocol, Self, runtime_checkable
 
 
-from terraflex.server.storage_provider_base import AbstractStorageProvider
+from terraflex.server.storage_provider_base import StorageProviderProtocol
 from terraflex.utils.dependency_manager import DependenciesManager
 
 
-class AbstractEncryption(abc.ABC):
+@runtime_checkable
+class EncryptionProtocol(Protocol):
     @classmethod
-    @abc.abstractmethod
     async def from_config(
         cls,
         raw_config: Any,
         *,
-        storage_providers: dict[str, AbstractStorageProvider],
+        storage_providers: dict[str, StorageProviderProtocol],
         manager: DependenciesManager,
     ) -> Self: ...
 
-    @abc.abstractmethod
     async def encrypt(self, file_name: str, content: bytes) -> bytes: ...
-
-    @abc.abstractmethod
     async def decrypt(self, file_name: str, content: bytes) -> bytes: ...

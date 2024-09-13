@@ -9,7 +9,7 @@ from terraflex.server.base_state_lock_provider import LockBody
 
 from terraflex.server.storage_provider_base import (
     ItemKey,
-    AbstractStorageProvider,
+    LockableStorageProviderProtocol,
     assume_lock_conflict_on_error,
 )
 from terraflex.utils.dependency_manager import DependenciesManager
@@ -32,7 +32,7 @@ def directory_is_empty(directory: pathlib.Path) -> bool:
     return not any(directory.iterdir())
 
 
-class GitStorageProvider(AbstractStorageProvider):
+class GitStorageProvider(LockableStorageProviderProtocol):
     """This follows the steps described in the suggestion here:
     https://github.com/plumber-cd/terraform-backend-git
     """
