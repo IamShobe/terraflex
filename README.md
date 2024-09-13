@@ -46,7 +46,7 @@ pipx upgrade terraflex
     unlock_method = "DELETE"
   }
   ```
-- Run any terraform command using `terraform wrap -- <command>` - for example:
+- Run any terraform command using `terraflex wrap -- <command>` - for example:
   ```bash
   terraflex wrap -- terraform init
   ```
