@@ -25,7 +25,7 @@ repo_name: IamShobe/terraflex
 edit_uri: edit/main/docs/
 
 nav:
-  - Home: 
+  - Terraflex: 
     - index.md
   - Getting Started: 
     - gettings-started/intro.md

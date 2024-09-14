@@ -12,6 +12,10 @@ Those backends were problematic for me because I had issues trusting them to sto
 The closest solution I found was [terraform-backend-git](https://github.com/plumber-cd/terraform-backend-git) - which this project was heavily influenced on - so go check it out as well!  
 Eventually I had the idea of creating an **extendable modular terraform http backend** - which allows customizing the state using `transformations` (like encryption), and getting starting with it will be as simple as running single command.
 
+## Documentation
+
+Check out documentations here: [docs](https://terraflex.iamshobe.com)
+
 ## Installation
 Recommended apporach is using [pipx](https://github.com/pypa/pipx):
 ```bash
