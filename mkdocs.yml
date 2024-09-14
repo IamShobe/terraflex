@@ -36,6 +36,8 @@ nav:
       - gettings-started/storage-providers/onepassword.md
     - Transformers:
       - gettings-started/transformers/encryption.md
+    - Encryption Providers:
+      - gettings-started/encryption-providers/age.md
   - Reference:
     - CLI Commands:
       - reference/commands/init.md
