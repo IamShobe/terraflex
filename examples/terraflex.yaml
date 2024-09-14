@@ -18,8 +18,8 @@ storage_providers:
   
   onepassword:
     type: onepassword
-    # OPTIONAL: (not recommended) - instead use OP_SERVICE_ACCOUNT_TOKEN envvar
-    # token: SOME_TOKEN
+    # uses OP_SERVICE_ACCOUNT_TOKEN envvar or any other cli way to authenticate
+    # requires the 1password cli to be installed 
 
 transformers:
   encryption:
