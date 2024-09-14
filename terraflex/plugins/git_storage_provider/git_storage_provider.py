@@ -121,7 +121,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
         return GitStorageProviderItemIdentifier.model_validate(key)
 
     @override
-    def get_file(self, item_identifier: GitStorageProviderItemIdentifier) -> bytes:
+    async def get_file(self, item_identifier: GitStorageProviderItemIdentifier) -> bytes:
         file_name = item_identifier.path
         self._cleanup_workspace()
         # pull latest changes
@@ -141,7 +141,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
         self._git("push", "origin", ref or self.ref)
 
     @override
-    def put_file(self, item_identifier: GitStorageProviderItemIdentifier, data: bytes) -> None:
+    async def put_file(self, item_identifier: GitStorageProviderItemIdentifier, data: bytes) -> None:
         file_name = item_identifier.path
         self._cleanup_workspace()
         # pull latest changes
@@ -154,7 +154,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
         self.commit_and_push_changes(f"Update state - {file_name}")
 
     @override
-    def delete_file(self, item_identifier: GitStorageProviderItemIdentifier) -> None:
+    async def delete_file(self, item_identifier: GitStorageProviderItemIdentifier) -> None:
         file_name = item_identifier.path
         self._cleanup_workspace()
         # pull latest changes
@@ -167,7 +167,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
         self.commit_and_push_changes(f"Delete state - {file_name}")
 
     @override
-    def read_lock(self, item_identifier: GitStorageProviderItemIdentifier) -> bytes:
+    async def read_lock(self, item_identifier: GitStorageProviderItemIdentifier) -> bytes:
         file_name = item_identifier.path
         self._cleanup_workspace()
         # delete lock branch if it exists
@@ -187,7 +187,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
         return lock_file.read_bytes()
 
     @override
-    def acquire_lock(self, item_identifier: GitStorageProviderItemIdentifier, data: LockBody) -> None:
+    async def acquire_lock(self, item_identifier: GitStorageProviderItemIdentifier, data: LockBody) -> None:
         file_name = item_identifier.path
         self._cleanup_workspace()
         # delete lock branch if it exists
@@ -212,6 +212,6 @@ class GitStorageProvider(LockableStorageProviderProtocol):
             self._git("push", "origin", f"locks/{file_name}")
 
     @override
-    def release_lock(self, item_identifier: GitStorageProviderItemIdentifier) -> None:
+    async def release_lock(self, item_identifier: GitStorageProviderItemIdentifier) -> None:
         file_name = item_identifier.path
         self._git("push", "origin", "--delete", f"locks/{file_name}")

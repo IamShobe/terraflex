@@ -494,6 +494,24 @@ files = [
 ]
 
 [[package]]
+name = "onepassword"
+version = "0.1.1"
+description = "The 1Password Python SDK offers programmatic read access to your secrets in 1Password in an interface native to Python."
+optional = false
+python-versions = "*"
+files = []
+develop = false
+
+[package.dependencies]
+pydantic = "*"
+
+[package.source]
+type = "git"
+url = "ssh://git@github.com/1Password/onepassword-sdk-python.git"
+reference = "v0.1.1"
+resolved_reference = "713e09f287bdb0661514aab82e5673839dfeb845"
+
+[[package]]
 name = "packaging"
 version = "24.1"
 description = "Core utilities for Python packages"
@@ -1270,4 +1288,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "4a2625ce6203ca4adcab5b7fa2cee445134e6e75348bce57f6a13546b69f3686"
+content-hash = "00e106e39bb10cf2e9f7fe4da1e19f6fe4fdbbc1daad5be3f26e8c8dc8d02d68"

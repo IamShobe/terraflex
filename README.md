@@ -62,7 +62,5 @@ pipx upgrade terraflex
 
 ## TODO
 
-- [ ] git - have a support for different branches
-- [ ] onepassword store for encryption key
 - [ ] bundle standalone binary using PyInstaller
 - [ ] CI/CD flow

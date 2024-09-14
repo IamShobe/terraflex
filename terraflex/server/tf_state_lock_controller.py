@@ -42,7 +42,7 @@ class TFStateLockController(StateLockProviderProtocol):
     async def get(self, stack_name: str) -> Data | None:
         stack = self._validate_stack(stack_name)
         try:
-            data = stack.storage_driver.get_file(stack.state_file_storage_identifier)
+            data = await stack.storage_driver.get_file(stack.state_file_storage_identifier)
 
         except FileNotFoundError:
             return None
@@ -64,14 +64,14 @@ class TFStateLockController(StateLockProviderProtocol):
         for transformer in stack.data_transformers:
             data = await transformer.transform_write_file_content(stack.state_file_storage_identifier.as_string(), data)
 
-        stack.storage_driver.put_file(stack.state_file_storage_identifier, data)
+        await stack.storage_driver.put_file(stack.state_file_storage_identifier, data)
 
     async def delete(self, stack_name: str, lock_id: str) -> None:
         stack = self._validate_stack(stack_name)
         await self._check_lock(stack_name, lock_id)
         # lock is locked by me
 
-        stack.storage_driver.delete_file(stack.state_file_storage_identifier)
+        await stack.storage_driver.delete_file(stack.state_file_storage_identifier)
 
     async def read_lock(self, stack_name: str) -> LockBody | None:
         stack = self._validate_stack(stack_name)
@@ -79,7 +79,7 @@ class TFStateLockController(StateLockProviderProtocol):
             raise NotImplementedError("This storage provider does not support writing")
 
         try:
-            data = stack.storage_driver.read_lock(stack.state_file_storage_identifier)
+            data = await stack.storage_driver.read_lock(stack.state_file_storage_identifier)
 
         except FileNotFoundError:
             return None
@@ -109,16 +109,16 @@ class TFStateLockController(StateLockProviderProtocol):
 
         return data
 
-    def lock(self, stack_name: str, data: LockBody) -> None:
+    async def lock(self, stack_name: str, data: LockBody) -> None:
         stack = self._validate_stack(stack_name)
         if not isinstance(stack.storage_driver, LockableStorageProviderProtocol):
             return
 
-        stack.storage_driver.acquire_lock(stack.state_file_storage_identifier, data)
+        await stack.storage_driver.acquire_lock(stack.state_file_storage_identifier, data)
 
-    def unlock(self, stack_name: str) -> None:
+    async def unlock(self, stack_name: str) -> None:
         stack = self._validate_stack(stack_name)
         if not isinstance(stack.storage_driver, LockableStorageProviderProtocol):
             return
 
-        stack.storage_driver.release_lock(stack.state_file_storage_identifier)
+        await stack.storage_driver.release_lock(stack.state_file_storage_identifier)

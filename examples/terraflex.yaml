@@ -5,18 +5,21 @@ storage_providers:
     type: git
     origin_url: git@github.com:IamShobe/tf-state.git
     # clone_path: ~/git/tf-state
-    # TODO: unsupported
     # ref: main
-  
-  # TODO: Planned
-  # onepassword:
-  #   type: onepassword
   
   local:
     type: local
     folder: ~/secrets/
     folder_mode: 0700
     file_mode: 0600
+  
+  envvar:
+    type: envvar
+  
+  onepassword:
+    type: onepassword
+    # OPTIONAL: (not recommended) - instead use OP_SERVICE_ACCOUNT_TOKEN envvar
+    # token: SOME_TOKEN
 
 transformers:
   encryption:
@@ -26,16 +29,22 @@ transformers:
       provider: local
       params:
         path: age_key.txt
-
-  # TODO: Planned
-  # - type: encryption
-  #   key_type: age
-  #   import_from:
-  #     storage_provider: onepassword
-  #     storage_params:
-  #       vault_id: a123456
-  #       item_id: b123456
-  #       field_name: private_key
+    
+  encryption2:
+    type: encryption
+    key_type: age
+    import_from_storage:
+      provider: envvar
+      params:
+        key: AGE_KEY
+  
+  encryption3:
+    type: encryption
+    key_type: age
+    import_from_storage:
+      provider: onepassword
+      params:
+        reference_uri: op://Vault/Item/Field
 
 stacks:
   my-stack:
@@ -47,8 +56,16 @@ stacks:
         path: terraform.tfstate
   my-stack2:
     transformers:
-      - encryption
+      - encryption2
     state_storage:
       provider: git
       params:
         path: terraform2.tfstate
+  
+  my-stack3:
+    transformers:
+      - encryption3
+    state_storage:
+      provider: git
+      params:
+        path: terraform3.tfstate

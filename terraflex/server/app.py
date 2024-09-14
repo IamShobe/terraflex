@@ -216,13 +216,13 @@ async def delete_state(stack_name: str, controller: ControllerDependency) -> Non
 
 
 @app.put("/{stack_name}/lock")
-def lock_state(stack_name: Annotated[str, PathDep()], body: LockBody, controller: ControllerDependency) -> None:
-    return controller.lock(stack_name, body)
+async def lock_state(stack_name: Annotated[str, PathDep()], body: LockBody, controller: ControllerDependency) -> None:
+    return await controller.lock(stack_name, body)
 
 
 @app.delete("/{stack_name}/lock")
-def unlock_state(stack_name: str, controller: ControllerDependency) -> None:
-    return controller.unlock(stack_name)
+async def unlock_state(stack_name: str, controller: ControllerDependency) -> None:
+    return await controller.unlock(stack_name)
 
 
 @app.get("/ready")

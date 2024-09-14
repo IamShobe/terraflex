@@ -40,7 +40,7 @@ async def generate_encryption_key(
     storage_provider_instance = storage_providers[provider_name]
     item_key = storage_provider_instance.validate_key(key_identifier.params or {})
     try:
-        storage_provider_instance.get_file(item_key)
+        await storage_provider_instance.get_file(item_key)
         # file exists, ask if we should replace it
         should_replace = await questionary.confirm(
             "The key already exists, do you want to replace it?",
@@ -54,7 +54,7 @@ async def generate_encryption_key(
         pass
 
     if isinstance(storage_provider_instance, WriteableStorageProviderProtocol):
-        storage_provider_instance.put_file(item_key, private_key)
+        await storage_provider_instance.put_file(item_key, private_key)
 
 
 async def add_encryption_transformer(

@@ -54,7 +54,7 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         return LocalStorageProviderItemIdentifier.model_validate(key)
 
     @override
-    def get_file(self, item_identifier: LocalStorageProviderItemIdentifier) -> bytes:
+    async def get_file(self, item_identifier: LocalStorageProviderItemIdentifier) -> bytes:
         file_name = item_identifier.path
         # read state
         state_file = self.folder / file_name
@@ -65,7 +65,7 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
             raise FileNotFoundError(f"File {state_file} not found") from exc
 
     @override
-    def put_file(self, item_identifier: LocalStorageProviderItemIdentifier, data: bytes) -> None:
+    async def put_file(self, item_identifier: LocalStorageProviderItemIdentifier, data: bytes) -> None:
         file_name = item_identifier.path
         # save state
         state_file = self.folder / file_name
@@ -73,14 +73,14 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         state_file.chmod(self.file_mode)
 
     @override
-    def delete_file(self, item_identifier: LocalStorageProviderItemIdentifier) -> None:
+    async def delete_file(self, item_identifier: LocalStorageProviderItemIdentifier) -> None:
         file_name = item_identifier.path
         # delete state
         state_file = self.folder / file_name
         state_file.unlink()
 
     @override
-    def read_lock(self, item_identifier: LocalStorageProviderItemIdentifier) -> bytes:
+    async def read_lock(self, item_identifier: LocalStorageProviderItemIdentifier) -> bytes:
         file_name = item_identifier.path
         # read lock data
         lock_file = self.folder / "locks" / f"{file_name}.lock"
@@ -90,7 +90,7 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         return lock_file.read_bytes()
 
     @override
-    def acquire_lock(self, item_identifier: LocalStorageProviderItemIdentifier, data: LockBody) -> None:
+    async def acquire_lock(self, item_identifier: LocalStorageProviderItemIdentifier, data: LockBody) -> None:
         file_name = item_identifier.path
         # make sure lock folder exists
         locks_dir = self.folder / "locks"
@@ -100,7 +100,7 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         lock_file.write_bytes(data.model_dump_json().encode())
 
     @override
-    def release_lock(self, item_identifier: LocalStorageProviderItemIdentifier) -> None:
+    async def release_lock(self, item_identifier: LocalStorageProviderItemIdentifier) -> None:
         file_name = item_identifier.path
         locks_dir = self.folder / "locks"
         lock_file = locks_dir / f"{file_name}.lock"

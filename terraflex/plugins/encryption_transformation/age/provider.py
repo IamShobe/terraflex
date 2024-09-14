@@ -49,7 +49,7 @@ class AgeEncryptionProvider(EncryptionProtocol):
             raise ValueError("Missing storage params")
 
         storage_key = storage_provider.validate_key(storage_params)
-        private_key = storage_provider.get_file(storage_key)
+        private_key = await storage_provider.get_file(storage_key)
         age_keygen_controller = AgeKeygenController(
             binary_location=manager.require_dependency("age-keygen"),
         )
