@@ -54,6 +54,7 @@ stacks:
       provider: git
       params:
         path: terraform.tfstate
+
   my-stack2:
     transformers:
       - encryption2
@@ -61,7 +62,7 @@ stacks:
       provider: git
       params:
         path: terraform2.tfstate
-  
+
   my-stack3:
     transformers:
       - encryption3

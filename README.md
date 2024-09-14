@@ -66,5 +66,9 @@ pipx upgrade terraflex
 
 ## TODO
 
-- [ ] bundle standalone binary using PyInstaller
 - [ ] CI/CD flow
+- [ ] Support encryption key rotation
+- [ ] Rclone storage provider?
+- [ ] Databases storage provider
+- [ ] Tests
+- [ ] bundle standalone binary using PyInstaller?
