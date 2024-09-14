@@ -69,6 +69,7 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         file_name = item_identifier.path
         # save state
         state_file = self.folder / file_name
+        state_file.parent.mkdir(parents=True, exist_ok=True)
         state_file.write_bytes(data)
         state_file.chmod(self.file_mode)
 
@@ -94,9 +95,9 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         file_name = item_identifier.path
         # make sure lock folder exists
         locks_dir = self.folder / "locks"
-        locks_dir.mkdir(exist_ok=True)
         # write lock file
         lock_file = locks_dir / f"{file_name}.lock"
+        lock_file.parent.mkdir(exist_ok=True, parents=True)
         lock_file.write_bytes(data.model_dump_json().encode())
 
     @override

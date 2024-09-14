@@ -149,6 +149,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
 
         # save state
         state_file = self.clone_path / file_name
+        state_file.parent.mkdir(parents=True, exist_ok=True)
         state_file.write_bytes(data)
 
         self.commit_and_push_changes(f"Update state - {file_name}")
@@ -183,7 +184,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
             raise FileNotFoundError(f"Lock file {file_name} not found in the repository") from exc
 
         # read lock data
-        lock_file = self.clone_path / "locks" / f"{file_name}.lock"
+        lock_file = self.clone_path / "locks" / "lock.lock"
         return lock_file.read_bytes()
 
     @override
@@ -203,7 +204,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
         locks_dir = self.clone_path / "locks"
         locks_dir.mkdir(exist_ok=True)
         # write lock file
-        lock_file = locks_dir / f"{file_name}.lock"
+        lock_file = locks_dir / "lock.lock"
         lock_file.write_bytes(data.model_dump_json().encode())
 
         self._git("add", str(lock_file))
