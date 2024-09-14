@@ -72,3 +72,5 @@ pipx upgrade terraflex
 - [ ] Databases storage provider
 - [ ] Tests
 - [ ] bundle standalone binary using PyInstaller?
+- [ ] Encryption should support multiple storages fallback
+- [ ] Build custom Github Actions CI to allow users easier terraform commands flows
