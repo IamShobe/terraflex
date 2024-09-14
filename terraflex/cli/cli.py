@@ -42,7 +42,7 @@ LOCK_INFO = """\
 """
 
 
-app = typer.Typer(pretty_exceptions_enable=False)
+app = typer.Typer(pretty_exceptions_enable=False, rich_markup_mode=None)
 
 
 @contextmanager

@@ -1,0 +1,44 @@
+site_name: Terraflex
+site_url: https://terraflex.iamshobe.com/
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+theme:
+  name: material
+  palette:
+    primary: deep purple
+  features:
+    - content.action.edit
+    - content.code.copy
+    - navigation.tabs
+    - navigation.path
+    - navigation.sections
+    - navigation.indexes
+    - navigation.expand
+plugins:
+   - tags
+   - search
+   - markdown-exec
+repo_url: https://github.com/IamShobe/terraflex
+repo_name: IamShobe/terraflex
+edit_uri: edit/main/docs/
+
+nav:
+  - Home: 
+    - index.md
+  - Getting Started: 
+    - gettings-started/intro.md
+    - Storage Providers:
+      - gettings-started/storage-providers/local.md
+      - gettings-started/storage-providers/git.md
+      - gettings-started/storage-providers/envvar.md
+      - gettings-started/storage-providers/onepassword.md
+    - Transformers:
+      - gettings-started/transformers/encryption.md
+  - Reference:
+    - CLI Commands:
+      - reference/commands/init.md
+      - reference/commands/print-bindings.md
+      - reference/commands/wrap.md
+

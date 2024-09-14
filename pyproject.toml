@@ -26,6 +26,9 @@ pytest = "^8.3.2"
 types-pyyaml = "^6.0.12.20240808"
 anyio = "^4.4.0"
 
+mkdocs-material = "^9.5.34"
+mkdocs-include-dir-to-nav = "^1.2.0"
+markdown-exec = {extras = ["ansi"], version = "^1.9.3"}
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
