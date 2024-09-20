@@ -12,6 +12,12 @@ from terraflex.utils.dependency_manager import DependenciesManager
 
 
 class AgeKeyConfig(BaseModel):
+    """Configuration for the Age encryption provider.
+
+    Attributes:
+        import_from_storage: usage reference to the storage provider where the private key is stored.
+    """
+
     import_from_storage: StorageProviderUsageConfig
 
 
@@ -23,8 +29,6 @@ AgeDependency = DependencyDownloader(
 
 
 class AgeEncryptionProvider(EncryptionProtocol):
-    TYPE = "age"
-
     def __init__(
         self,
         controller: AgeController,

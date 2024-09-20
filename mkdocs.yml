@@ -1,16 +1,25 @@
 site_name: Terraflex
 site_url: https://terraflex.iamshobe.com/
+copyright: Copyright © 2024 Elran Shefer - IamShobe
 markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.superfences
+  - md_in_html
+watch:
+  - terraflex/  # Watch the terraflex folder for changes
+  - docs_includes/
+  - examples/
 theme:
   name: material
   palette:
     primary: deep purple
   features:
     - content.action.edit
+    - content.action.view
     - content.code.copy
+    - content.code.annotate
+    - content.tooltips
     - navigation.tabs
     - navigation.path
     - navigation.sections
@@ -20,6 +29,21 @@ plugins:
    - tags
    - search
    - markdown-exec
+   - kroki
+   - include-markdown
+   - mkdocstrings:
+      handlers:
+        python:
+          options:
+            allow_inspection: true
+            show_bases: true
+            show_labels: true
+            heading_level: 3
+            show_root_heading: true
+            show_root_full_path: false
+            show_root_members_full_path: false
+            show_object_full_path: false
+
 repo_url: https://github.com/IamShobe/terraflex
 repo_name: IamShobe/terraflex
 edit_uri: edit/main/docs/
@@ -28,19 +52,31 @@ nav:
   - Terraflex: 
     - index.md
   - Getting Started: 
-    - gettings-started/intro.md
-    - Storage Providers:
-      - gettings-started/storage-providers/local.md
-      - gettings-started/storage-providers/git.md
-      - gettings-started/storage-providers/envvar.md
-      - gettings-started/storage-providers/onepassword.md
-    - Transformers:
-      - gettings-started/transformers/encryption.md
-    - Encryption Providers:
-      - gettings-started/encryption-providers/age.md
+    - getting-started/01-intro.md
+    - Guides:
+      - getting-started/guides/01-setting-up-git.md
+      - getting-started/guides/02-encryption-using-1password.md
+    - Examples:
+      - getting-started/examples/all-local.md
+      - getting-started/examples/1password-storage-provider.md
+      - getting-started/examples/envvar-storage-provider.md
   - Reference:
+    - General:
+      - reference/general/01-terraflex_yaml.md
+      - reference/general/02-storage-providers.md
+      - reference/general/03-transformers.md
+      - reference/general/04-entrypoints.md
+    - Storage Providers:
+      - reference/storage-providers/local.md
+      - reference/storage-providers/git.md
+      - reference/storage-providers/envvar.md
+      - reference/storage-providers/onepassword.md
+    - Transformers:
+      - reference/transformers/encryption.md
+    - Encryption Providers:
+      - reference/encryption-providers/age.md
     - CLI Commands:
       - reference/commands/init.md
       - reference/commands/print-bindings.md
       - reference/commands/wrap.md
-
+      - reference/commands/start.md

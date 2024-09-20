@@ -1,0 +1,1 @@
+[<img src="https://img.shields.io/badge/Lockable-red"/>](../docs/reference/general/02-storage-providers.md#lockable-storage)

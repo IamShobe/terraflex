@@ -1,6 +1,5 @@
-from dataclasses import dataclass
 import pathlib
-from typing import Any, Optional, Self, override
+from typing import Any, Self, override
 
 from pydantic import BaseModel, ConfigDict
 
@@ -15,13 +14,25 @@ from terraflex.utils.plugins import get_providers
 ENCRYPTION_PROVIDER_ENTRYPOINT = "terraflex.plugins.transformer.encryption"
 
 
-@dataclass
-class EncryptionConfig:
-    key_path: Optional[pathlib.Path] = None
-    sops_config_path: Optional[pathlib.Path] = None
-
-
 class EncryptionTransformerConfig(BaseModel):
+    """Transformer that encrypts and decrypts the content of the files using the specified encryption provider.
+
+    Attributes:
+        key_type: The type of the encryption key.
+        **kwargs: Additional configuration for the encryption provider.
+
+    Example:
+        Encryption transformer with `age` encryption provider:
+        ```yaml
+        type: encryption
+        key_type: age
+        import_from_storage:
+            provider: envvar
+            params:
+                key: AGE_PRIVATE_KEY
+        ```
+    """
+
     model_config = ConfigDict(extra="allow")
     key_type: str
 
@@ -30,8 +41,6 @@ encryption_providers = get_providers(EncryptionProtocol, ENCRYPTION_PROVIDER_ENT
 
 
 class EncryptionTransformation(TransformerProtocol):
-    TYPE = "encryption"
-
     def __init__(self, encryption_provider: EncryptionProtocol):
         self.encryption_provider = encryption_provider
 

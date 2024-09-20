@@ -13,14 +13,23 @@ from terraflex.utils.dependency_manager import DependenciesManager
 
 
 class OnePasswordProviderItemIdentifier(ItemKey):
+    """Params required to reference an item in 1Password storage provider.
+
+    Attributes:
+        reference_uri: 1Password URI to the item. Example: `op://<vault>/<item>/<field>`
+    """
+
     reference_uri: str
 
     def as_string(self) -> str:
-        return self.reference_uri
+        return self.reference_uri.replace("/", "_").replace(":", "_")
 
 
 class OnePasswordStorageProviderInitConfig(BaseModel):
-    pass
+    """Initialization params required to initialize 1Password storage provider.
+
+    1Password storage provider currently have no initialization params required.
+    """
 
 
 class OnePasswordStorageProvider(StorageProviderProtocol):

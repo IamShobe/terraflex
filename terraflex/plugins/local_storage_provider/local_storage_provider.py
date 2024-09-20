@@ -12,6 +12,13 @@ from terraflex.utils.dependency_manager import DependenciesManager
 
 
 class LocalStorageProviderItemIdentifier(ItemKey):
+    """Params required to reference an item in Local storage provider.
+
+    Attributes:
+        path: The path to a specific file relative to the directory root,
+            folders are also allowed as part of the path.
+    """
+
     path: str
 
     def as_string(self) -> str:
@@ -19,6 +26,14 @@ class LocalStorageProviderItemIdentifier(ItemKey):
 
 
 class LocalStorageProviderInitConfig(BaseModel):
+    """Initialization params required to initialize Local storage provider.
+
+    Attributes:
+        folder: The path to the directory where the files will be stored.
+        folder_mode: The mode to set on the folder. Default: 0o700.
+        file_mode: The mode to set on the files. Default: 0o600.
+    """
+
     folder: pathlib.Path
     folder_mode: int = 0o700
     file_mode: int = 0o600
@@ -81,14 +96,14 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         state_file.unlink()
 
     @override
-    async def read_lock(self, item_identifier: LocalStorageProviderItemIdentifier) -> bytes:
+    async def read_lock(self, item_identifier: LocalStorageProviderItemIdentifier) -> LockBody:
         file_name = item_identifier.path
         # read lock data
         lock_file = self.folder / "locks" / f"{file_name}.lock"
         if not lock_file.exists():
             raise FileNotFoundError(f"Lock file {lock_file} not found")
 
-        return lock_file.read_bytes()
+        return LockBody.model_validate_json(lock_file.read_bytes())
 
     @override
     async def acquire_lock(self, item_identifier: LocalStorageProviderItemIdentifier, data: LockBody) -> None:

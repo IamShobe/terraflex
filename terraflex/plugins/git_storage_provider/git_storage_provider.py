@@ -16,6 +16,13 @@ from terraflex.utils.dependency_manager import DependenciesManager
 
 
 class GitStorageProviderItemIdentifier(ItemKey):
+    """Params required to reference an item in Git storage provider.
+
+    Attributes:
+        path: The path to a specific file relative to the repository root,
+            folders are also allowed as part of the path.
+    """
+
     path: str
 
     def as_string(self) -> str:
@@ -23,8 +30,17 @@ class GitStorageProviderItemIdentifier(ItemKey):
 
 
 class GitStorageProviderInitConfig(BaseModel):
+    """Initialization params required to initialize Git storage provider.
+
+    Attributes:
+        origin_url: The URL of the git repository. Must be accessible by the current user.
+            Example: git@github.com:IamShobe/tf-state.git
+        ref: The branch to use.
+        clone_path: The path to clone the repository to. Default: None. (will be set to ~/.local/share/terraflex/git_storage/<repo_name>)
+    """
+
     origin_url: str
-    ref: Optional[str] = "main"
+    ref: str = "main"
     clone_path: Optional[pathlib.Path] = None
 
 
@@ -168,7 +184,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
         self.commit_and_push_changes(f"Delete state - {file_name}")
 
     @override
-    async def read_lock(self, item_identifier: GitStorageProviderItemIdentifier) -> bytes:
+    async def read_lock(self, item_identifier: GitStorageProviderItemIdentifier) -> LockBody:
         file_name = item_identifier.path
         self._cleanup_workspace()
         # delete lock branch if it exists
@@ -185,7 +201,7 @@ class GitStorageProvider(LockableStorageProviderProtocol):
 
         # read lock data
         lock_file = self.clone_path / "locks" / "lock.lock"
-        return lock_file.read_bytes()
+        return LockBody.model_validate_json(lock_file.read_bytes())
 
     @override
     async def acquire_lock(self, item_identifier: GitStorageProviderItemIdentifier, data: LockBody) -> None:

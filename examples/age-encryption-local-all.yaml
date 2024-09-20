@@ -1,0 +1,26 @@
+storage_providers:
+  local: # Initialize new storage provider - name can be anything
+    type: local
+    folder: ~/states/
+  
+  encryption-dir:
+    type: local
+    folder: ~/secrets/
+
+transformers:
+  encryption: # Initialize new transformer - Name can be anything, we use `encryption` for semantics.
+    type: encryption # In this case we use `encryption` transformer
+    key_type: age # We use `age` as the encryption provider
+    import_from_storage:
+      provider: encryption-dir # Make sure name is matching your storage provider
+      params:
+        path: age-key.txt # The path to the encryption key file inside ~/secrets/
+
+stacks:
+  my-stack: # Initialize new stack - Name can be anything
+    transformers: # List of transformers to use in this specific stack
+      - encryption # Make sure name is matching your transformer
+    state_storage: # Terraform state storage configuration
+      provider: local # In this case we use our local storage provider
+      params:
+        path: terraform.tfstate # The path to the state file inside our repository

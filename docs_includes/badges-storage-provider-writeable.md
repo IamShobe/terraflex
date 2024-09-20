@@ -1,0 +1,1 @@
+[<img src="https://img.shields.io/badge/Writeable-green"/>](../docs/reference/general/02-storage-providers.md#writeable-storage)

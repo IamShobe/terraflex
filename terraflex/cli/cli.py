@@ -83,6 +83,12 @@ async def _init() -> None:
 
 @app.command()
 def init() -> None:
+    """Initialize the configuration file for the server in current directory.
+
+    Starts an interactive wizard to create the configuration file.
+
+    Output will be a file named `terraflex.yaml` in the current directory.
+    """
     with capture_aborts():
         asyncio.run(_init())
 
@@ -91,6 +97,7 @@ def init() -> None:
 def start(
     port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
 ) -> None:
+    """Starts the server with the configuration file in the current directory."""
     start_server(port)
 
 
@@ -125,6 +132,7 @@ def print_bindings(
     stack_name: Annotated[str, typer.Argument(help="Name of the stack")],
     port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
 ) -> None:
+    """Prints the terraform backend configuration for the given stack name and port."""
     with capture_aborts():
         asyncio.run(print_binding_message(stack_name, port))
 
@@ -162,6 +170,14 @@ def wrap(
     port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
     args: list[str] = typer.Argument(help="Command to run"),
 ) -> None:
+    """Main command that allows wrapping any command with the context of the server running.
+
+    Its main purpose is to allow running terraform commands with the server running.
+
+    Examples:
+
+    $ terraflex wrap -- terraform init
+    """
     instance = UvicornServer(
         config=Config(
             app=server_app,

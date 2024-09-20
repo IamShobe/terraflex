@@ -3,6 +3,21 @@ from pydantic import BaseModel, ConfigDict
 
 
 class LockBody(BaseModel):
+    """Data struct that contains the lock information.
+
+    This is the same data struct that is required by terraform.
+    It follows the same fields names as the terraform lock file.
+
+    See offical [source](https://github.com/hashicorp/terraform/blob/aea5c0cc180e0e6915454b3bf61f471c230c111b/internal/states/statemgr/locker.go#L129).
+
+    Attributes:
+        ID: The ID of the lock.
+        Operation: The operation that is being performed.
+        Who: The entity that is performing the operation.
+        Version: The version of the lock.
+        Created: The time when the lock was created.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     ID: str

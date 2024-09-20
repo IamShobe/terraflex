@@ -13,6 +13,12 @@ from terraflex.utils.dependency_manager import DependenciesManager
 
 
 class EnvVarStorageProviderItemIdentifier(ItemKey):
+    """Params required to reference an item in EnvVar storage provider.
+
+    Attributes:
+        key: The name of the environment variable to read.
+    """
+
     key: str
 
     def as_string(self) -> str:
@@ -20,7 +26,10 @@ class EnvVarStorageProviderItemIdentifier(ItemKey):
 
 
 class EnvVarStorageProviderInitConfig(BaseModel):
-    pass
+    """Initialization params required to initialize EnvVar storage provider.
+
+    EnvVar storage provider currently have no initialization params required.
+    """
 
 
 class EnvVarStorageProvider(StorageProviderProtocol):

@@ -79,12 +79,10 @@ class TFStateLockController(StateLockProviderProtocol):
             raise NotImplementedError("This storage provider does not support writing")
 
         try:
-            data = await stack.storage_driver.read_lock(stack.state_file_storage_identifier)
+            return await stack.storage_driver.read_lock(stack.state_file_storage_identifier)
 
         except FileNotFoundError:
             return None
-
-        return LockBody.model_validate_json(data)
 
     async def _check_lock(self, stack_name: str, lock_id: str) -> LockBody:
         stack = self._validate_stack(stack_name)
