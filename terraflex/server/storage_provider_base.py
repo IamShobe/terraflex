@@ -67,7 +67,7 @@ class StorageProviderProtocol(Protocol):
         Args:
             key: a dict with parameters to build the key of the item.
 
-        Retruns:
+        Returns:
             The validated key.
         """
         ...
