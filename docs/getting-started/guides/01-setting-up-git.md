@@ -104,7 +104,7 @@ $ terraflex wrap -- terraform init -migrate-state
 
 In my case I'm stating a new IAC repository so I can simply use:
 ```console
-$ teraflex wrap -- terraform init
+$ terraflex wrap -- terraform init
 ```
 
 For any terraform command use [`terraflex wrap`](../../reference/commands/wrap.md) to startup the backend while the terraform command is running!  

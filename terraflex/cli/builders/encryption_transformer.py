@@ -62,7 +62,7 @@ async def generate_encryption_key(
 async def add_encryption_transformer(
     state_storage_provider_name: str, config_file: ConfigFile, manager: DependenciesManager
 ) -> str | None:
-    transfomer_name = await questionary.text(
+    transformer_name = await questionary.text(
         "What is the name of the transformer?",
         default="encryption",
     ).ask_async()
@@ -137,6 +137,6 @@ async def add_encryption_transformer(
         **encryption_config.model_dump(),
     )
 
-    config_file.transformers[transfomer_name] = transformer_config
+    config_file.transformers[transformer_name] = transformer_config
 
-    return transfomer_name
+    return transformer_name
