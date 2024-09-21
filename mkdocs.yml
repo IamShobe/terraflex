@@ -25,6 +25,7 @@ theme:
     - navigation.sections
     - navigation.indexes
     - navigation.expand
+    - navigation.footer
 plugins:
    - tags
    - search
