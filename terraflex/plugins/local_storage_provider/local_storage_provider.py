@@ -2,11 +2,11 @@ import pathlib
 from typing import Any, Self, override
 
 from pydantic import BaseModel
-
 from terraflex.server.base_state_lock_provider import LockBody
 from terraflex.server.storage_provider_base import (
     ItemKey,
     LockableStorageProviderProtocol,
+    parse_item_key,
 )
 from terraflex.utils.dependency_manager import DependenciesManager
 
@@ -21,6 +21,7 @@ class LocalStorageProviderItemIdentifier(ItemKey):
 
     path: str
 
+    @override
     def as_string(self) -> str:
         return self.path
 
@@ -65,12 +66,13 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
 
     @override
     @classmethod
-    def validate_key(cls, key: dict) -> LocalStorageProviderItemIdentifier:
+    def validate_key(cls, key: dict[str, Any]) -> LocalStorageProviderItemIdentifier:
         return LocalStorageProviderItemIdentifier.model_validate(key)
 
     @override
-    async def get_file(self, item_identifier: LocalStorageProviderItemIdentifier) -> bytes:
-        file_name = item_identifier.path
+    async def get_file(self, item_identifier: ItemKey) -> bytes:
+        parsed_key = parse_item_key(item_identifier, LocalStorageProviderItemIdentifier)
+        file_name = parsed_key.path
         # read state
         state_file = self.folder / file_name
         try:
@@ -80,8 +82,9 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
             raise FileNotFoundError(f"File {state_file} not found") from exc
 
     @override
-    async def put_file(self, item_identifier: LocalStorageProviderItemIdentifier, data: bytes) -> None:
-        file_name = item_identifier.path
+    async def put_file(self, item_identifier: ItemKey, data: bytes) -> None:
+        parsed_key = parse_item_key(item_identifier, LocalStorageProviderItemIdentifier)
+        file_name = parsed_key.path
         # save state
         state_file = self.folder / file_name
         state_file.parent.mkdir(parents=True, exist_ok=True)
@@ -89,15 +92,17 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         state_file.chmod(self.file_mode)
 
     @override
-    async def delete_file(self, item_identifier: LocalStorageProviderItemIdentifier) -> None:
-        file_name = item_identifier.path
+    async def delete_file(self, item_identifier: ItemKey) -> None:
+        parsed_key = parse_item_key(item_identifier, LocalStorageProviderItemIdentifier)
+        file_name = parsed_key.path
         # delete state
         state_file = self.folder / file_name
         state_file.unlink()
 
     @override
-    async def read_lock(self, item_identifier: LocalStorageProviderItemIdentifier) -> LockBody:
-        file_name = item_identifier.path
+    async def read_lock(self, item_identifier: ItemKey) -> LockBody:
+        parsed_key = parse_item_key(item_identifier, LocalStorageProviderItemIdentifier)
+        file_name = parsed_key.path
         # read lock data
         lock_file = self.folder / "locks" / f"{file_name}.lock"
         if not lock_file.exists():
@@ -106,8 +111,9 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         return LockBody.model_validate_json(lock_file.read_bytes())
 
     @override
-    async def acquire_lock(self, item_identifier: LocalStorageProviderItemIdentifier, data: LockBody) -> None:
-        file_name = item_identifier.path
+    async def acquire_lock(self, item_identifier: ItemKey, data: LockBody) -> None:
+        parsed_key = parse_item_key(item_identifier, LocalStorageProviderItemIdentifier)
+        file_name = parsed_key.path
         # make sure lock folder exists
         locks_dir = self.folder / "locks"
         # write lock file
@@ -116,8 +122,9 @@ class LocalStorageProvider(LockableStorageProviderProtocol):
         lock_file.write_bytes(data.model_dump_json().encode())
 
     @override
-    async def release_lock(self, item_identifier: LocalStorageProviderItemIdentifier) -> None:
-        file_name = item_identifier.path
+    async def release_lock(self, item_identifier: ItemKey) -> None:
+        parsed_key = parse_item_key(item_identifier, LocalStorageProviderItemIdentifier)
+        file_name = parsed_key.path
         locks_dir = self.folder / "locks"
         lock_file = locks_dir / f"{file_name}.lock"
         lock_file.unlink()

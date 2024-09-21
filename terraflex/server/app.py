@@ -1,19 +1,21 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Any, AsyncIterator, Literal
-from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status, Path as PathDep
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from typing import Annotated, Any, AsyncIterator, Literal, Optional, TypedDict
+
 import uvicorn
 import yaml
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi import Path as PathDep
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
-from terraflex.server.config import ConfigFile, Settings
 from terraflex.server.base_state_lock_provider import (
-    StateLockProviderProtocol,
     Data,
     LockBody,
     LockingError,
+    StateLockProviderProtocol,
 )
+from terraflex.server.config import ConfigFile, Settings
 from terraflex.server.storage_provider_base import (
     STORATE_PROVIDERS_ENTRYPOINT,
     StorageProviderProtocol,
@@ -90,7 +92,7 @@ async def create_storage_providers(
         STORATE_PROVIDERS_ENTRYPOINT,
     )
 
-    result_storage_providers = {}
+    result_storage_providers: dict[str, StorageProviderProtocol] = {}
     for name, storage_config in config.storage_providers.items():
         if storage_config.type not in storage_providers:
             raise ValueError(f"Unsupported storage provider type: {storage_config.type}")
@@ -159,7 +161,13 @@ async def initialize_controller() -> StateLockProviderProtocol:
     return TFStateLockController(stacks=stacks)
 
 
-state = {}
+class AppState(TypedDict):
+    controller: Optional[StateLockProviderProtocol]
+
+
+state: AppState = {
+    "controller": None,
+}
 
 
 @asynccontextmanager
@@ -169,6 +177,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 def get_controller() -> StateLockProviderProtocol:
+    if state["controller"] is None:
+        raise ValueError("Controller not initialized")
+
     return state["controller"]
 
 

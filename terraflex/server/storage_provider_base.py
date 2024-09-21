@@ -1,28 +1,35 @@
-from contextlib import contextmanager
+import abc
 import pathlib
-from typing import Any, Iterator, Protocol, Self, runtime_checkable
+from contextlib import contextmanager
+from typing import Any, Iterator, Protocol, Self, TypeVar, runtime_checkable
 
 from pydantic import BaseModel
-
 from terraflex.server.base_state_lock_provider import LockBody, LockingError
 from terraflex.utils.dependency_manager import DependenciesManager
 
 STORATE_PROVIDERS_ENTRYPOINT = "terraflex.plugins.storage_provider"
 
 
-class ItemKey(BaseModel):
+class ItemKey(BaseModel, abc.ABC):
     """Params required to reference an item in a storage provider.
 
-    Every storage provider must implement a subclass of `ItemKey` to represent the key of the item.
+    Every storage provider must implement a subclass of `ItemKey` to represent the key of the item - using the validate_key() method.
     """
 
+    @abc.abstractmethod
     def as_string(self) -> str:
-        """Return a string representation of the key.
+        """Return the string representation of the key."""
+        ...
 
-        Returns:
-            The string representation of the key.
-        """
-        raise NotImplementedError("as_string method must be implemented in subclasses")
+
+T = TypeVar("T", bound=BaseModel)
+
+
+def parse_item_key(item_key: ItemKey, model: type[T]) -> T:
+    if not isinstance(item_key, model):
+        raise ValueError(f"Item key is not of type {model}")
+
+    return item_key
 
 
 @runtime_checkable
@@ -54,7 +61,7 @@ class StorageProviderProtocol(Protocol):
         ...
 
     @classmethod
-    def validate_key(cls, key: dict) -> ItemKey:
+    def validate_key(cls, key: dict[str, Any]) -> ItemKey:
         """Validate the key of the item in the storage provider from a config of usage.
 
         Args:

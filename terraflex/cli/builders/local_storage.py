@@ -1,15 +1,15 @@
 import pathlib
 from typing import Optional
-import questionary
 
-from terraflex.server.config import (
-    StorageProviderConfig,
-    StorageProviderUsageConfig,
-)
+import questionary
 
 from terraflex.plugins.local_storage_provider.local_storage_provider import (
     LocalStorageProviderInitConfig,
     LocalStorageProviderItemIdentifier,
+)
+from terraflex.server.config import (
+    StorageProviderConfig,
+    StorageProviderUsageConfig,
 )
 
 
@@ -28,7 +28,7 @@ async def build_local_storage_provider(local_storage_default_path: Optional[str]
 
 
 async def build_local_key_identifier(
-    provider_name, path, question="What is the location of the file?"
+    provider_name: str, path: str, question: str = "What is the location of the file?"
 ) -> StorageProviderUsageConfig:
     path = await questionary.text(
         question,

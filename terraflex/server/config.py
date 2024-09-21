@@ -1,15 +1,17 @@
 import pathlib
 from typing import (
     Annotated,
+    Any,
     Optional,
 )
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+import semver
+import xdg_base_dirs
 from pydantic_settings import (
     BaseSettings,
 )
-import semver
-import xdg_base_dirs
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 PACKAGE_NAME = "terraflex"
 
@@ -38,7 +40,7 @@ class StorageProviderUsageConfig(BaseModel):
     """
 
     provider: str
-    params: Optional[dict]
+    params: Optional[dict[str, Any]] = None
 
 
 class StorageProviderConfig(BaseModel):

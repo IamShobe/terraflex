@@ -1,15 +1,16 @@
 import asyncio
-from contextlib import contextmanager
 import multiprocessing
-import subprocess
 import pathlib
+import subprocess
 import time
-from typing import Annotated, Iterator
+from contextlib import contextmanager
+from typing import Annotated, Any, Iterator
+
 import httpx
-import typer
-from uvicorn import Config, Server
-import yaml
 import questionary
+import typer
+import yaml
+from uvicorn import Config, Server
 
 from terraflex.cli.builders.wizard import start_configfile_creation_wizard
 from terraflex.server.app import (
@@ -17,12 +18,15 @@ from terraflex.server.app import (
     create_storage_providers,
     initialize_manager,
     start_server,
+)
+from terraflex.server.app import (
     app as server_app,
+)
+from terraflex.server.app import (
     config as server_config,
 )
 from terraflex.server.config import ConfigFile
 from terraflex.server.storage_provider_base import LockableStorageProviderProtocol
-
 
 READY_MESSAGE = """\
 backend "http" {{
@@ -146,7 +150,7 @@ class UvicornServer(multiprocessing.Process):
     def stop(self):
         self.terminate()
 
-    def run(self, *args, **kwargs):
+    def run(self, *args: list[Any], **kwargs: dict[str, Any]):
         self.server.run()
 
 
@@ -163,19 +167,18 @@ def wait_until_ready(port: int):
 
 @app.command()
 def wrap(
+    args: Annotated[list[str], typer.Argument(help="Command to run")],
     verbose: Annotated[
         bool,
         typer.Option("-v", "--verbose", help="Print more details about the backend"),
     ] = False,
     port: Annotated[int, typer.Option(help="Port to run the server on")] = 8600,
-    args: list[str] = typer.Argument(help="Command to run"),
 ) -> None:
     """Main command that allows wrapping any command with the context of the server running.
 
     Its main purpose is to allow running terraform commands with the server running.
 
     Examples:
-
     $ terraflex wrap -- terraform init
     """
     instance = UvicornServer(

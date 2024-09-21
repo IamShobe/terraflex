@@ -20,6 +20,15 @@
       "args": ["start"],
       "cwd": "${workspaceFolder}/../iac",
       "justMyCode": false
+    },
+    {
+      "name": "Python Debugger: Terraform plan",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "terraflex",
+      "args": ["wrap", "--", "terraform", "plan"],
+      "cwd": "${workspaceFolder}/../iac",
+      "justMyCode": false
     }
   ]
 }

@@ -24,7 +24,6 @@
         "**/.pytest_cache/": true,
         "**/.ruff_cache/": true
     },
-    "python.analysis.typeCheckingMode": "basic",
     "yaml.schemas": {
         "https://squidfunk.github.io/mkdocs-material/schema.json": "mkdocs.yml"
     },

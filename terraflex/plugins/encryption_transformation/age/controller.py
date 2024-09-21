@@ -1,5 +1,5 @@
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 from terraflex.utils.binary_controller import BinaryController
 

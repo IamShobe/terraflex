@@ -1,4 +1,5 @@
-from typing import Protocol, TypeAlias
+from typing import Any, Protocol, TypeAlias
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -27,7 +28,7 @@ class LockBody(BaseModel):
     Created: str
 
 
-Data: TypeAlias = dict
+Data: TypeAlias = dict[str, Any]
 
 
 class LockingError(Exception):

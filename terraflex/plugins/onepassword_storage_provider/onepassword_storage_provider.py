@@ -3,11 +3,10 @@ import subprocess
 from typing import Any, Self, override
 
 from pydantic import BaseModel
-
-
 from terraflex.server.storage_provider_base import (
     ItemKey,
     StorageProviderProtocol,
+    parse_item_key,
 )
 from terraflex.utils.dependency_manager import DependenciesManager
 
@@ -21,6 +20,7 @@ class OnePasswordProviderItemIdentifier(ItemKey):
 
     reference_uri: str
 
+    @override
     def as_string(self) -> str:
         return self.reference_uri.replace("/", "_").replace(":", "_")
 
@@ -70,13 +70,14 @@ class OnePasswordStorageProvider(StorageProviderProtocol):
 
     @override
     @classmethod
-    def validate_key(cls, key: dict) -> OnePasswordProviderItemIdentifier:
+    def validate_key(cls, key: dict[str, Any]) -> OnePasswordProviderItemIdentifier:
         return OnePasswordProviderItemIdentifier.model_validate(key)
 
     @override
-    async def get_file(self, item_identifier: OnePasswordProviderItemIdentifier) -> bytes:
+    async def get_file(self, item_identifier: ItemKey) -> bytes:
+        parsed_key = parse_item_key(item_identifier, OnePasswordProviderItemIdentifier)
         try:
-            return self._op("read", item_identifier.reference_uri).encode()
+            return self._op("read", parsed_key.reference_uri).encode()
 
         except Exception as e:
-            raise RuntimeError(f"Secret {item_identifier.reference_uri} couldn't be fetched") from e
+            raise RuntimeError(f"Secret {parsed_key.reference_uri} couldn't be fetched") from e

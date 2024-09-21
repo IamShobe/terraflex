@@ -3,7 +3,6 @@ from importlib.metadata import entry_points
 from typing import Generic, Type, TypeVar
 from venv import logger
 
-
 T = TypeVar("T")
 
 

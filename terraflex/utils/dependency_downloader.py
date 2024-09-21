@@ -1,5 +1,6 @@
 import pathlib
 from typing import Awaitable, Callable, Protocol
+from venv import logger
 
 
 def mv_executable_to_dest(src: pathlib.Path, dest: pathlib.Path) -> None:
@@ -16,7 +17,7 @@ def mv_executable_to_dest(src: pathlib.Path, dest: pathlib.Path) -> None:
 
 
 def should_download(expected_locations: dict[str, pathlib.Path]) -> bool:
-    return not all([location.exists() for location in expected_locations.values()])
+    return not all(location.exists() for location in expected_locations.values())
 
 
 def write_executable_to_file(output_bin: pathlib.Path, content: bytes) -> None:
@@ -27,9 +28,7 @@ def write_executable_to_file(output_bin: pathlib.Path, content: bytes) -> None:
 
 
 class DownloaderProtocol(Protocol):
-    async def __call__(
-        self, version: str, expected_paths: dict[str, pathlib.Path]
-    ) -> None: ...
+    async def __call__(self, version: str, expected_paths: dict[str, pathlib.Path]) -> None: ...
 
 
 class DependencyDownloader:
@@ -37,9 +36,7 @@ class DependencyDownloader:
         self,
         names: list[str],
         version: str,
-        downloader: Callable[
-            [str, dict[str, pathlib.Path]], Awaitable[None]
-        ],
+        downloader: Callable[[str, dict[str, pathlib.Path]], Awaitable[None]],
     ):
         self.names = names
         self.version = version
@@ -48,15 +45,11 @@ class DependencyDownloader:
     def get_bin_names(self) -> dict[str, str]:
         return {name: f"{name}-v{self.version}" for name in self.names}
 
-    def get_expected_locations(
-        self, dest_folder: pathlib.Path
-    ) -> dict[str, pathlib.Path]:
+    def get_expected_locations(self, dest_folder: pathlib.Path) -> dict[str, pathlib.Path]:
         bin_names = self.get_bin_names()
         return {name: (dest_folder / bin_name) for name, bin_name in bin_names.items()}
 
-    async def ensure_installed(
-        self, dest_folder: pathlib.Path
-    ) -> dict[str, pathlib.Path]:
+    async def ensure_installed(self, dest_folder: pathlib.Path) -> dict[str, pathlib.Path]:
         expected_locations = self.get_expected_locations(dest_folder)
         if should_download(expected_locations):
             # create directory if it doesn't exist
@@ -65,9 +58,7 @@ class DependencyDownloader:
 
         return expected_locations
 
-    async def _download(
-        self, expected_locations: dict[str, pathlib.Path]
-    ) -> dict[str, pathlib.Path]:
-        print(f"Downloading {self.names} client...")
+    async def _download(self, expected_locations: dict[str, pathlib.Path]) -> dict[str, pathlib.Path]:
+        logger.info(f"Downloading {self.names} client...")
         await self.downloader(self.version, expected_locations)
         return expected_locations

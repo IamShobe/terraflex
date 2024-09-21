@@ -3,11 +3,10 @@ import pathlib
 from typing import Any, Self, override
 
 from pydantic import BaseModel
-
-
 from terraflex.server.storage_provider_base import (
     ItemKey,
     StorageProviderProtocol,
+    parse_item_key,
 )
 from terraflex.utils.dependency_manager import DependenciesManager
 
@@ -21,6 +20,7 @@ class EnvVarStorageProviderItemIdentifier(ItemKey):
 
     key: str
 
+    @override
     def as_string(self) -> str:
         return self.key
 
@@ -49,12 +49,13 @@ class EnvVarStorageProvider(StorageProviderProtocol):
 
     @override
     @classmethod
-    def validate_key(cls, key: dict) -> EnvVarStorageProviderItemIdentifier:
+    def validate_key(cls, key: dict[str, Any]) -> EnvVarStorageProviderItemIdentifier:
         return EnvVarStorageProviderItemIdentifier.model_validate(key)
 
     @override
-    async def get_file(self, item_identifier: EnvVarStorageProviderItemIdentifier) -> bytes:
-        if item_identifier.key not in os.environ:
-            raise FileNotFoundError(f"Environment variable {item_identifier.key} not found")
+    async def get_file(self, item_identifier: ItemKey) -> bytes:
+        parsed_key = parse_item_key(item_identifier, EnvVarStorageProviderItemIdentifier)
+        if parsed_key.key not in os.environ:
+            raise FileNotFoundError(f"Environment variable {parsed_key.key} not found")
 
-        return os.environ[item_identifier.key].encode()
+        return os.environ[parsed_key.key].encode()

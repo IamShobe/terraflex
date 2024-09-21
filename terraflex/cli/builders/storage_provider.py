@@ -1,4 +1,5 @@
 from typing import Optional
+
 import questionary
 
 from terraflex.cli.builders.git_storage import build_git_key_identifier, build_git_storage_provider
@@ -10,7 +11,7 @@ from terraflex.server.config import (
 
 
 async def create_storage_provider_and_key(
-    possible_providers,
+    possible_providers: list[str],
     main_question: str,
     key_question: str,
     default_key_path: str,

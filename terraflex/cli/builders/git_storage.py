@@ -1,13 +1,12 @@
 import questionary
 
-from terraflex.server.config import (
-    StorageProviderConfig,
-    StorageProviderUsageConfig,
-)
-
 from terraflex.plugins.git_storage_provider.git_storage_provider import (
     GitStorageProviderInitConfig,
     GitStorageProviderItemIdentifier,
+)
+from terraflex.server.config import (
+    StorageProviderConfig,
+    StorageProviderUsageConfig,
 )
 
 
@@ -23,7 +22,7 @@ async def build_git_storage_provider() -> StorageProviderConfig:
 
 
 async def build_git_key_identifier(
-    provider_name, path, question="What is the location of the file?"
+    provider_name: str, path: str, question: str = "What is the location of the file?"
 ) -> StorageProviderUsageConfig:
     path = await questionary.text(
         question,

@@ -2,7 +2,6 @@ import pathlib
 from typing import Any, Self, override
 
 from pydantic import BaseModel, ConfigDict
-
 from terraflex.plugins.encryption_transformation.encryption_base import EncryptionProtocol
 from terraflex.server.storage_provider_base import StorageProviderProtocol
 from terraflex.server.transformation_base import (

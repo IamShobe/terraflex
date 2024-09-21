@@ -4,7 +4,6 @@ from typing import Any, Protocol, Self, runtime_checkable
 from terraflex.server.storage_provider_base import StorageProviderProtocol
 from terraflex.utils.dependency_manager import DependenciesManager
 
-
 TRANSFORMERS_ENTRYPOINT = "terraflex.plugins.transformer"
 
 
