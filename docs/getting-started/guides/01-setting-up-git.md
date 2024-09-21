@@ -111,4 +111,8 @@ For any terraform command use [`terraflex wrap`](../../reference/commands/wrap.m
 
 ![Plan works](./assets/terraform-plan.png)
 
-
+!!! danger
+    Keeping secrets in disk is not ideal - you might lose your key if you lose your disk - which means **you might lose your access to your state file**.  
+    Make sure to backup the secret somewhere safe - so it will be recoverable.  
+    If you have password managers like [1Password](https://1password.com/), [Bitwarden](https://bitwarden.com/) or any other - make sure to back it up there.  
+    Terraflex actually supports [integration with 1Password](./02-encryption-using-1password.md) - so you wont need to hold a copy of it on your disk.

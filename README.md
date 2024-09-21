@@ -1,4 +1,7 @@
 # terraflex
+
+[![](https://img.shields.io/pypi/v/terraflex)](https://pypi.org/project/terraflex/) ![](https://img.shields.io/pypi/pyversions/terraflex)
+
 Construct custom backends for your terraform project!
 
 > [!NOTE]  
@@ -64,13 +67,7 @@ pipx upgrade terraflex
 > Make sure to not lose your encryption key - back it up!
 > If you lose this key you wont be able to reopen the terraform state at all!
 
-## TODO
 
-- [ ] CI/CD flow
-- [ ] Support encryption key rotation
-- [ ] Rclone storage provider?
-- [ ] Databases storage provider
-- [ ] Tests
-- [ ] bundle standalone binary using PyInstaller?
-- [ ] Encryption should support multiple storages fallback
-- [ ] Build custom Github Actions CI to allow users easier terraform commands flows
+### Others
+
+- Checkout  [issues](https://github.com/IamShobe/terraflex/issues) to see roadmap.

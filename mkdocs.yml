@@ -53,6 +53,7 @@ nav:
     - index.md
   - Getting Started: 
     - getting-started/01-intro.md
+    - getting-started/02-installation.md
     - Guides:
       - getting-started/guides/01-setting-up-git.md
       - getting-started/guides/02-encryption-using-1password.md

@@ -1,5 +1,12 @@
 # Terraflex
 
+[![](https://img.shields.io/pypi/v/terraflex)](https://pypi.org/project/terraflex/) ![](https://img.shields.io/pypi/pyversions/terraflex)
+
+## Useful links
+
+- [Getting started](./getting-started/01-intro.md)
+- Checkout [issues](https://github.com/IamShobe/terraflex/issues) to see roadmap.
+
 ## Intro
 Construct custom backends for your terraform project!
 
