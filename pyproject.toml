@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "terraflex"
-version = "0.4.1"
+version = "0.4.2"
 description = ""
 authors = ["Elran Shefer"]
 readme = "README.md"
 homepage = "https://github.com/IamShobe/terraflex"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11"
 fastapi = { extras = ["standard"], version = "^0.112.2" }
 pydantic = "^2.8.2"
 pydantic-settings = "^2.4.0"
