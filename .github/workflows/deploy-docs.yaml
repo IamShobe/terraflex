@@ -35,4 +35,4 @@ jobs:
           uv sync
       - name: deploy docs
         run: |
-          mkdocs gh-deploy --force
+          uv run mkdocs gh-deploy --force
