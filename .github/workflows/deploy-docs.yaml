@@ -32,7 +32,7 @@ jobs:
             mkdocs-material-
       - name: Install dependencies with uv
         run: |
-          uv pip install .[dev]
+          uv sync
       - name: deploy docs
         run: |
           mkdocs gh-deploy --force
