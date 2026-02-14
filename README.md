@@ -20,14 +20,33 @@ Eventually I had the idea of creating an **extendable modular terraform http bac
 Check out documentations here: [docs](https://terraflex.iamshobe.com)
 
 ## Installation
-Recommended apporach is using [pipx](https://github.com/pypa/pipx):
+
+### Recommended: Use [uv tooling](https://github.com/astral-sh/uv)
+
+Install uv (if not already):
 ```bash
-pipx install terraflex
+curl -Ls https://astral.sh/uv/install.sh | sh
 ```
 
-Upgrade using:
+
+Install terraflex globally using uv tooling (from PyPI):
 ```bash
-pipx upgrade terraflex
+uv tool install terraflex
+```
+
+Or install the latest version directly from GitHub:
+```bash
+uv tool install git+https://github.com/IamShobe/terraflex.git
+```
+
+Upgrade terraflex:
+```bash
+uv tool upgrade terraflex
+```
+
+To use terraflex in a project with dev dependencies, you can still use:
+```bash
+uv sync -G dev
 ```
 
 ## Getting started
